@@ -3,6 +3,7 @@ import { profileAPI, uploadAPI, SOCKET_URL } from '../../utils/api';
 import Spinner from '../ui/Spinner';
 import Modal from '../ui/Modal';
 import { FiPlayCircle, FiPlus, FiEdit, FiTrash2, FiSave, FiUpload } from 'react-icons/fi';
+import { toEmbeddableVideoUrl } from '../../utils/videoUrls';
 
 const emptyVideo = {
     title: '',
@@ -66,6 +67,9 @@ const VideoEditor = ({ profile, refetchProfile }) => {
                 thumbnailUrl: await uploadIfSelected(thumbnailFile, currentVideo.thumbnailUrl),
                 posterImageUrl: await uploadIfSelected(posterFile, currentVideo.posterImageUrl),
             };
+            if (nextVideo.videoType === 'embed') {
+                nextVideo.videoUrl = toEmbeddableVideoUrl(nextVideo.videoUrl);
+            }
 
             const newVideos = [...videos];
             if (currentIndex !== null) {
@@ -159,7 +163,7 @@ const VideoEditor = ({ profile, refetchProfile }) => {
                             <input type="number" placeholder="Order" value={currentVideo.order} onChange={(e) => updateCurrentVideo('order', Number(e.target.value))} className="w-full p-2 text-sm rounded-md bg-neutral-100 dark:bg-neutral-800 border border-light-border dark:border-neutral-700" />
                         </div>
 
-                        <input type="text" placeholder="Video URL or uploaded file URL" value={currentVideo.videoUrl} onChange={(e) => updateCurrentVideo('videoUrl', e.target.value)} className="w-full p-2 text-sm rounded-md bg-neutral-100 dark:bg-neutral-800 border border-light-border dark:border-neutral-700" />
+                        <input type="text" placeholder="YouTube link or uploaded file URL" value={currentVideo.videoUrl} onChange={(e) => updateCurrentVideo('videoUrl', e.target.value)} className="w-full p-2 text-sm rounded-md bg-neutral-100 dark:bg-neutral-800 border border-light-border dark:border-neutral-700" />
                         <label className="flex items-center gap-2 text-xs font-bold text-neutral-500">
                             <FiUpload /> Upload/replace video
                             <input type="file" accept="video/*" onChange={(e) => setVideoFile(e.target.files?.[0] || null)} className="block w-full text-xs" />

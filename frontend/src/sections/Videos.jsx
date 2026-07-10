@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiPlayCircle } from 'react-icons/fi';
 import { SOCKET_URL } from '../utils/api';
+import { toEmbeddableVideoUrl } from '../utils/videoUrls';
 
 const resolveMediaUrl = (url) => {
   if (!url) return '';
@@ -50,7 +51,7 @@ export default function Videos({ profile }) {
                 ) : (
                   <iframe
                     className="w-full h-full"
-                    src={video.videoUrl}
+                    src={toEmbeddableVideoUrl(video.videoUrl)}
                     title={video.title}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
