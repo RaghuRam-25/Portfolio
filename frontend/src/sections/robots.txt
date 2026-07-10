@@ -1,0 +1,10 @@
+# Allow all user agents to crawl the site
+User-agent: *
+Allow: /
+
+# Disallow crawling admin or auth related pages
+Disallow: /admin
+Disallow: /auth-portal
+
+# Sitemap location
+Sitemap: https://your-domain.com/sitemap.xml

@@ -1,0 +1,248 @@
+@import "tailwindcss";
+
+@theme {
+  /* Light Mode Colors (Apple/Stripe Inspired) */
+  --color-light-bg: #FAFAFA;
+  --color-light-surface: #FFFFFF;
+  --color-light-textPrimary: #1D1D1F;
+  --color-light-textSecondary: #6E6E73;
+  --color-light-border: #E5E5E7;
+
+  /* Dark Mode Colors (Vercel/Linear Inspired) */
+  --color-dark-bg: #030303;
+  --color-dark-surface: #0A0A0C;
+  --color-dark-textPrimary: #F5F5F7;
+  --color-dark-textSecondary: #8E8E93;
+  --color-dark-border: #1F1F23;
+
+  /* Premium Accent Colors */
+  --color-accent-blue: #0071E3;
+  --color-accent-purple: rgb(var(--color-accent-rgb, 99, 102, 241));
+
+  /* Dynamic Custom Theme Colors */
+  --color-primary: rgb(var(--color-primary-rgb, 6, 182, 212));
+  --color-secondary: rgb(var(--color-secondary-rgb, 59, 130, 246));
+  --color-accent: rgb(var(--color-accent-rgb, 139, 92, 246));
+
+  /* Typography */
+  --font-sans: "Inter", "SF Pro Display", "-apple-system", sans-serif;
+
+  /* Premium Shadows & Blur */
+  --shadow-premium-light: 0 4px 30px rgba(0, 0, 0, 0.03);
+  --shadow-premium-dark: 0 4px 30px rgba(0, 0, 0, 0.4);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-color: var(--color-light-bg);
+    color: var(--color-light-textPrimary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-family: var(--font-sans);
+  }
+
+  body.dark {
+    background-color: var(--color-dark-bg);
+    color: var(--color-dark-textPrimary);
+  }
+}
+
+/* Custom Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D4D4D4;
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #262626;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A3A3A3;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #404040;
+}
+
+/* Premium Glassmorphism Utilities */
+.glass-effect-light {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 229, 231, 0.5);
+}
+
+.glass-effect-dark {
+  background: rgba(10, 10, 12, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(31, 31, 35, 0.5);
+}
+
+/* ================= Premium Animations ================= */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* বিজলি চমকানোর সময় ক্যামেরা কাঁপানোর জন্য (Camera Shake) */
+@keyframes lightning-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-4px, 3px); }
+  30% { transform: translate(4px, -3px); }
+  50% { transform: translate(-3px, -2px); }
+  70% { transform: translate(3px, 3px); }
+  90% { transform: translate(-2px, 1px); }
+}
+
+.animate-shake {
+  animation: lightning-shake 0.4s ease-in-out;
+}
+
+/* নামের লেখাটি ড্রয়িং হয়ে পূরণ হওয়ার জন্য */
+@keyframes stroke-write {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fill-text {
+  to {
+    fill: #FFFFFF;
+    stroke: transparent;
+  }
+}
+
+/* নামের লেখাটি ড্রয়িং হয়ে বোল্ড আকারে ভরাট হওয়ার জন্য */
+@keyframes stroke-write {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fill-text {
+  to {
+    fill: #FFFFFF;
+    stroke: rgba(34, 211, 238, 0.4);
+    stroke-width: 1px;
+    filter: drop-shadow(0px 0px 12px rgba(34, 211, 238, 0.8));
+  }
+}
+
+.drawn-text {
+  font-weight: 700 !important;
+  animation:
+    stroke-write 3s ease-in-out 2.2s forwards,
+    fill-text 1s ease-in-out 4.8s forwards;
+}
+
+/* ============================================================= */
+/* ===   PREMIUM SCROLL & ENTRY ANIMATION SYSTEM             === */
+/* ============================================================= */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInLeft {
+  from { opacity: 0; transform: translateX(-32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeInRight {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes dropdown-pop {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* Utility animation classes */
+.animate-fade-in-up    { animation: fadeInUp  0.6s cubic-bezier(.22,1,.36,1) both; }
+.animate-fade-in-left  { animation: fadeInLeft  0.6s cubic-bezier(.22,1,.36,1) both; }
+.animate-fade-in-right { animation: fadeInRight 0.6s cubic-bezier(.22,1,.36,1) both; }
+.animate-scale-in      { animation: scaleIn  0.5s cubic-bezier(.22,1,.36,1) both; }
+.animate-slide-up      { animation: slideUp  0.5s cubic-bezier(.22,1,.36,1) both; }
+.animate-dropdown-pop  { animation: dropdown-pop 0.3s cubic-bezier(.22,1,.36,1) both; }
+.animate-pulse-slow    { animation: pulse-slow 2.5s ease-in-out infinite; }
+.animate-fadeIn        { animation: fadeInUp  0.4s ease both; }
+
+/* Staggered delay utilities */
+.animation-delay-100  { animation-delay: 100ms; }
+.animation-delay-150  { animation-delay: 150ms; }
+.animation-delay-200  { animation-delay: 200ms; }
+.animation-delay-300  { animation-delay: 300ms; }
+.animation-delay-400  { animation-delay: 400ms; }
+.animation-delay-500  { animation-delay: 500ms; }
+.animation-delay-600  { animation-delay: 600ms; }
+.animation-delay-700  { animation-delay: 700ms; }
+.animation-delay-800  { animation-delay: 800ms; }
+.animation-delay-1000 { animation-delay: 1000ms; }
+
+/* IntersectionObserver-based reveal class */
+/* Elements start invisible; JS adds .revealed class on scroll */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.6s cubic-bezier(.22,1,.36,1), transform 0.6s cubic-bezier(.22,1,.36,1);
+}
+
+.scroll-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered card children — each nth-child gets delayed reveal */
+.stagger-children .scroll-reveal:nth-child(1)  { transition-delay: 0ms; }
+.stagger-children .scroll-reveal:nth-child(2)  { transition-delay: 80ms; }
+.stagger-children .scroll-reveal:nth-child(3)  { transition-delay: 160ms; }
+.stagger-children .scroll-reveal:nth-child(4)  { transition-delay: 240ms; }
+.stagger-children .scroll-reveal:nth-child(5)  { transition-delay: 320ms; }
+.stagger-children .scroll-reveal:nth-child(6)  { transition-delay: 400ms; }
+.stagger-children .scroll-reveal:nth-child(7)  { transition-delay: 480ms; }
+.stagger-children .scroll-reveal:nth-child(8)  { transition-delay: 560ms; }
+.stagger-children .scroll-reveal:nth-child(9)  { transition-delay: 640ms; }
+.stagger-children .scroll-reveal:nth-child(10) { transition-delay: 720ms; }
+.stagger-children .scroll-reveal:nth-child(n+11){ transition-delay: 800ms; }
+
+/* Custom Scrollbar for modal */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #404040; border-radius: 9999px; }
