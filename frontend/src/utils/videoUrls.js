@@ -30,6 +30,21 @@ export const toEmbeddableVideoUrl = (url) => {
   return rawUrl;
 };
 
+export const isDirectVideoUrl = (url) => {
+  if (!url) return false;
+
+  const rawUrl = String(url).trim();
+  if (!rawUrl) return false;
+
+  try {
+    const baseUrl = globalThis.location?.origin || 'http://localhost';
+    const parsed = new URL(rawUrl, baseUrl);
+    return /\.(mp4|webm|ogg|ogv|mov|m4v)(?:$|\?)/i.test(parsed.pathname);
+  } catch {
+    return /\.(mp4|webm|ogg|ogv|mov|m4v)(?:$|\?)/i.test(rawUrl);
+  }
+};
+
 const buildYouTubeEmbedUrl = (videoId, sourceParams) => {
   const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
   const start = sourceParams.get('start') || parseYouTubeTime(sourceParams.get('t'));

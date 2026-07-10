@@ -3,7 +3,7 @@ import { profileAPI, uploadAPI, SOCKET_URL } from '../../utils/api';
 import Spinner from '../ui/Spinner';
 import Modal from '../ui/Modal';
 import { FiPlayCircle, FiPlus, FiEdit, FiTrash2, FiSave, FiUpload } from 'react-icons/fi';
-import { toEmbeddableVideoUrl } from '../../utils/videoUrls';
+import { isDirectVideoUrl, toEmbeddableVideoUrl } from '../../utils/videoUrls';
 
 const emptyVideo = {
     title: '',
@@ -67,7 +67,9 @@ const VideoEditor = ({ profile, refetchProfile }) => {
                 thumbnailUrl: await uploadIfSelected(thumbnailFile, currentVideo.thumbnailUrl),
                 posterImageUrl: await uploadIfSelected(posterFile, currentVideo.posterImageUrl),
             };
-            if (nextVideo.videoType === 'embed') {
+            if (videoFile || isDirectVideoUrl(nextVideo.videoUrl)) {
+                nextVideo.videoType = 'upload';
+            } else if (nextVideo.videoType === 'embed') {
                 nextVideo.videoUrl = toEmbeddableVideoUrl(nextVideo.videoUrl);
             }
 

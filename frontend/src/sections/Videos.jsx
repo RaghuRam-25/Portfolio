@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiPlayCircle } from 'react-icons/fi';
 import { SOCKET_URL } from '../utils/api';
-import { toEmbeddableVideoUrl } from '../utils/videoUrls';
+import { isDirectVideoUrl, toEmbeddableVideoUrl } from '../utils/videoUrls';
 
 const resolveMediaUrl = (url) => {
   if (!url) return '';
@@ -34,6 +34,7 @@ export default function Videos({ profile }) {
         ) : (
           videoList.map((video, index) => {
             const embedUrl = toEmbeddableVideoUrl(video.videoUrl);
+            const shouldUseVideoPlayer = video.videoType === 'upload' || isDirectVideoUrl(video.videoUrl);
 
             return (
             <div
@@ -42,7 +43,7 @@ export default function Videos({ profile }) {
               style={{ animationDelay: `${index * 120}ms` }}
             >
               <div className="aspect-video w-full overflow-hidden rounded-xl bg-neutral-950">
-                {video.videoType === 'upload' ? (
+                {shouldUseVideoPlayer ? (
                   <video
                     className="w-full h-full object-cover"
                     src={resolveMediaUrl(video.videoUrl)}

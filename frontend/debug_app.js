@@ -1,7 +1,9 @@
-const { spawn } = require('child_process');
-const http = require('http');
+import { spawn } from 'node:child_process';
+import { join } from 'node:path';
+import process from 'node:process';
+import { tmpdir } from 'node:os';
 
-const tempDir = require('path').join(require('os').tmpdir(), 'edge-debug-profile-' + Date.now());
+const tempDir = join(tmpdir(), 'edge-debug-profile-' + Date.now());
 console.log('Using temp profile directory:', tempDir);
 
 const edgeArgs = [
@@ -51,8 +53,6 @@ async function startDebugging() {
         
         let messageId = 1;
         const pendingCallbacks = new Map();
-        const sessions = new Map();
-
         ws.onopen = () => {
             console.log('WebSocket connected. Creating target for localhost:5173...');
             
