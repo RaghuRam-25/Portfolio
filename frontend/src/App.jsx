@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Toast from './components/Toast';
 import ErrorBoundary from './components/ErrorBoundary'; // নতুন: Error Boundary ইম্পোর্ট করা হলো
 import { authAPI, profileAPI, SOCKET_URL } from './utils/api';
+import { sanitizeProfile } from './utils/profileSanitizer';
 import { io } from 'socket.io-client';
 
 // Code Splitting: সেকশনগুলো ডাইনামিকভাবে ইম্পোর্ট করা হচ্ছে
@@ -50,7 +51,7 @@ function App() {
   const refreshProfileData = useCallback(async () => {
     try {
       const res = await profileAPI.getPublicProfile();
-      setProfileData(res.success ? res.data : {});
+      setProfileData(res.success ? sanitizeProfile(res.data) : {});
     } catch (error) {
       setProfileData({});
     }
@@ -63,7 +64,7 @@ function App() {
       try {
         const res = await profileAPI.getPublicProfile();
         if (res.success) {
-          setProfileData(res.data);
+          setProfileData(sanitizeProfile(res.data));
         } else {
           // যদি প্রোফাইল ডেটা লোড হতে ব্যর্থ হয় (যেমন: কোনো অ্যাডমিন ইউজার নেই),
           // তাহলে একটি খালি অবজেক্ট দিয়ে স্টেট সেট করা হবে, যাতে অ্যাপটি আটকে না যায়।
