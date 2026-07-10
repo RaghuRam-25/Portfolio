@@ -248,7 +248,7 @@ function App() {
       setUser={setUser}
     >
       <Suspense fallback={null}>
-        <ErrorBoundary>
+        <ErrorBoundary key={activeTab}>
           <div className="animate-fadeIn transition-all duration-300">
             {renderSection()}
           </div>

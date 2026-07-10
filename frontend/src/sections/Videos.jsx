@@ -10,7 +10,9 @@ const resolveMediaUrl = (url) => {
 };
 
 export default function Videos({ profile }) {
-  const videoList = [...(profile?.videos || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const videoList = (Array.isArray(profile?.videos) ? profile.videos : [])
+    .filter((video) => video && typeof video === 'object')
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const sectionCopy = profile?.videoSection || {};
 
   return (
@@ -30,7 +32,10 @@ export default function Videos({ profile }) {
             </p>
           </div>
         ) : (
-          videoList.map((video, index) => (
+          videoList.map((video, index) => {
+            const embedUrl = toEmbeddableVideoUrl(video.videoUrl);
+
+            return (
             <div
               key={`${video.title}-${index}`}
               className="rounded-2xl border border-light-border dark:border-neutral-800 p-4 bg-white dark:bg-neutral-900 shadow-sm hover:shadow-xl hover:shadow-accent-purple/5 transition-all duration-300 animate-fade-in-up"
@@ -48,14 +53,18 @@ export default function Videos({ profile }) {
                     controls={video.controls}
                     playsInline
                   />
-                ) : (
+                ) : embedUrl ? (
                   <iframe
                     className="w-full h-full"
-                    src={toEmbeddableVideoUrl(video.videoUrl)}
-                    title={video.title}
+                    src={embedUrl}
+                    title={video.title || 'Video'}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   ></iframe>
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-4 text-center text-sm font-semibold text-neutral-400">
+                    Video URL missing
+                  </div>
                 )}
               </div>
               <div className="mt-4">
@@ -64,7 +73,8 @@ export default function Videos({ profile }) {
                 <p className="text-sm text-neutral-500 mt-2">{video.description}</p>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </section>
