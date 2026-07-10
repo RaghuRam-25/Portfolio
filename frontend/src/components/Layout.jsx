@@ -31,7 +31,9 @@ export default function Layout({ children, activeTab, setActiveTab, user, setUse
       if (fontFamily) document.body.style.fontFamily = fontFamily;
 
       // থিম কনটেক্সট আপডেট করা হচ্ছে
-      if (darkModeEnabled !== undefined) {
+      // শুধুমাত্র তখনই ডাটাবেজের থিম সেট করা হবে যখন ইউজারের কোনো লোকাল স্টোরেজ প্রিফারেন্স থাকবে না।
+      const savedTheme = localStorage.getItem('theme');
+      if (!savedTheme && darkModeEnabled !== undefined) {
         setTheme(darkModeEnabled ? 'dark' : 'light');
       }
     }

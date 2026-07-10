@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Light Mode Colors (Apple/Stripe Inspired) */
   --color-light-bg: #FAFAFA;
