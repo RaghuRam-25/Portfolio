@@ -3,8 +3,12 @@
 // UI/Design কিছু পরিবর্তন করে না, শুধু data fetch করে
 // ============================================================
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-export const SOCKET_URL = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || 'http://localhost:5000';
+let apiURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+if (apiURL && !apiURL.endsWith('/api') && !apiURL.endsWith('/api/')) {
+  apiURL = apiURL.replace(/\/$/, '') + '/api';
+}
+const BASE_URL = apiURL;
+export const SOCKET_URL = BASE_URL.replace(/\/api\/?$/, '');
 
 // LocalStorage থেকে JWT token নেওয়া
 const getToken = () => localStorage.getItem('portfolio_token');
