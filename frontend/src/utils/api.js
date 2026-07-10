@@ -30,36 +30,11 @@ const makeUrlsAbsolute = (data) => {
   if (!data) return data;
 
   if (typeof data === 'string') {
-    // Handle local uploads to make them absolute
     if (data.startsWith('uploads/') && !data.startsWith('http://') && !data.startsWith('https://')) {
       return `${SOCKET_URL}/${data}`;
     }
     if (data.startsWith('/uploads/') && !data.startsWith('http://') && !data.startsWith('https://')) {
       return `${SOCKET_URL}${data}`;
-    }
-
-    // Automatically convert YouTube URLs to embeddable format
-    if (data.includes('youtube.com/') || data.includes('youtu.be/')) {
-      let videoId = null;
-      try {
-        const url = new URL(data);
-        if (url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com') {
-          if (url.pathname === '/watch') {
-            videoId = url.searchParams.get('v');
-          } else if (url.pathname.startsWith('/embed/')) {
-            videoId = url.pathname.split('/')[2];
-          }
-        } else if (url.hostname === 'youtu.be') {
-          videoId = url.pathname.substring(1);
-        }
-      } catch (e) {
-        // Not a valid URL, ignore and return original data below
-      }
-
-      if (videoId) {
-        const cleanedVideoId = videoId.split('?')[0].split('&')[0];
-        return `https://www.youtube.com/embed/${cleanedVideoId}`;
-      }
     }
     return data;
   }
