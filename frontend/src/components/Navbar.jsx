@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FiLogOut, FiMenu, FiMessageSquare, FiSliders, FiUser, FiX } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
-import { authAPI } from '../utils/api';
+import { authAPI, PLACEHOLDER_AVATAR } from '../utils/api';
 
 export default function Navbar({ activeTab, setActiveTab, user, setUser, profile }) {
   const { theme, toggleTheme } = useTheme();
@@ -68,7 +68,7 @@ export default function Navbar({ activeTab, setActiveTab, user, setUser, profile
     closeMenus();
   };
 
-  const avatarUrl = user?.avatarUrl || profile?.avatarUrl || profile?.heroSection?.heroImageUrl || 'https://via.placeholder.com/80';
+  const avatarUrl = user?.avatarUrl || profile?.avatarUrl || profile?.heroSection?.heroImageUrl || PLACEHOLDER_AVATAR;
 
   const accountActions = (mobile = false) => (
     <div className={mobile ? 'mt-3 border-t border-light-border/40 dark:border-neutral-800 pt-3 space-y-2' : 'space-y-1'}>
@@ -200,14 +200,14 @@ export default function Navbar({ activeTab, setActiveTab, user, setUser, profile
             <div className="absolute inset-0 border-2 border-t-transparent border-primary rounded-full animate-spin-slow-logo" />
             <div className="absolute -inset-1 border border-dashed border-primary/40 rounded-full animate-spin-slow-logo-reverse" />
             <img
-              src={profile?.heroSection?.heroImageUrl || profile?.avatarUrl || 'https://via.placeholder.com/400'}
+              src={profile?.heroSection?.heroImageUrl || profile?.avatarUrl || PLACEHOLDER_AVATAR}
               alt="Profile"
               className="relative w-7 h-7 rounded-full object-cover"
             />
           </div>
           <span
             className="truncate max-w-[11rem] sm:max-w-xs text-xl sm:text-2xl font-normal tracking-wide bg-gradient-to-r from-light-textPrimary dark:from-white via-primary to-light-textPrimary dark:to-white bg-clip-text text-transparent animate-gradient-shimmer"
-            style={{ fontFamily: "'Palace Script MT', cursive" }}
+            style={{ fontFamily: "'Alex Brush', 'Palace Script MT', cursive" }}
           >
             {profile?.name || 'Portfolio'}
           </span>
@@ -218,7 +218,7 @@ export default function Navbar({ activeTab, setActiveTab, user, setUser, profile
             <button
               key={link.id}
               onClick={() => handleNavClick(link.id)}
-              className={`relative nav-link-wrap text-sm font-semibold transition-all hover:scale-105 ${activeTab === link.id ? 'text-primary' : 'text-neutral-600 dark:text-neutral-300'}`}
+              className={`relative nav-link-wrap text-sm font-semibold transition-all hover:scale-105 active:scale-95 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${activeTab === link.id ? 'text-primary' : 'text-neutral-600 dark:text-neutral-300'}`}
             >
               {link.name}
               <span className={`nav-underline ${activeTab === link.id ? 'nav-underline-active' : ''}`} />

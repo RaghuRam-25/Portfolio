@@ -39,7 +39,7 @@ export default function Contact({ profile }) {
     const fetchSocials = async () => {
       try {
         const response = await socialLinkAPI.getAll();
-        if (response.success) setSocials(response.data);
+        if (response.success) setSocials(response.data || []);
       } catch (error) {
         console.error("Error loading social links:", error);
       }
@@ -72,13 +72,17 @@ export default function Contact({ profile }) {
     }
     setIsLoading(true);
     try {
-      await messagesAPI.sendPublic(formData.senderName, formData.senderEmail, formData.message);
+      const res = await messagesAPI.sendPublic(formData.senderName, formData.senderEmail, formData.message);
+      // fetch 4xx/5xx-এ reject করে না, তাই সার্ভার রেসপন্স চেক করা হয় (H4 fix)
+      if (!res?.success) {
+        throw new Error(res?.message || 'Your message could not be sent. Please try again.');
+      }
       setToastMsg('Message received successfully!');
       setToastType('success');
       setShowToast(true);
       setFormData({ senderName: '', senderEmail: '', message: '' });
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'An error occurred. Please try again.';
+      const errorMessage = error?.message || 'An error occurred. Please try again.';
       setToastMsg(errorMessage);
       setToastType('error');
       setShowToast(true);

@@ -2,7 +2,10 @@ const Project = require('../models/Project');
 const { deleteFile } = require('../utils/fileUpload'); // Assuming you have a fileUpload utility for deleting files
 const path = require('path');
 
-const toPublicUploadPath = (file) => `uploads/${path.basename(file.path)}`;
+const toPublicUploadPath = (file) => {
+    if (/^https?:\/\//i.test(file.path)) return file.path;
+    return `uploads/${path.basename(file.path)}`;
+};
 
 /**
  * Converts relative or absolute file paths in a project object to absolute, web-accessible URLs.
@@ -148,14 +151,16 @@ const updateProject = async (req, res) => {
             }
         }
 
-        project.title = title || project.title;
-        project.description = description || project.description;
-        project.category = category || project.category;
-        project.thumbnail = thumbnail || project.thumbnail;
+        // M8 fix: title/thumbnail required — শুধু নতুন মান থাকলে সেট করা হয়;
+        // অপশনাল ফিল্ড (description, githubUrl, liveUrl) খালি স্ট্রিং দিয়ে ক্লিয়ার করা যায়।
+        if (title) project.title = title;
+        if (description !== undefined) project.description = description;
+        if (category) project.category = category;
+        if (thumbnail) project.thumbnail = thumbnail;
         project.images = [...retainedImages, ...galleryImages];
         project.techStack = parsedTechStack;
-        project.githubUrl = githubUrl || project.githubUrl;
-        project.liveUrl = liveUrl || project.liveUrl;
+        if (githubUrl !== undefined) project.githubUrl = githubUrl;
+        if (liveUrl !== undefined) project.liveUrl = liveUrl;
         project.isFeatured = isFeatured !== undefined ? isFeatured === true || isFeatured === 'true' : project.isFeatured;
         project.isDelivered = isDelivered !== undefined ? isDelivered === true || isDelivered === 'true' : project.isDelivered;
         project.order = order !== undefined ? order : project.order;

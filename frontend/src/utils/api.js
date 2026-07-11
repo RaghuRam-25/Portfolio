@@ -10,6 +10,17 @@ if (apiURL && !apiURL.endsWith('/api') && !apiURL.endsWith('/api/')) {
 const BASE_URL = apiURL;
 export const SOCKET_URL = BASE_URL.replace(/\/api\/?$/, '');
 
+// ============================================================
+// লোকাল ইনলাইন-SVG প্লেসহোল্ডার (via.placeholder.com আর রিজলভ করে না)।
+// data-URI তাৎক্ষণিক রেন্ডার হয়, অফলাইনেও কাজ করে, কোনো নেটওয়ার্ক নির্ভরতা নেই।
+// ============================================================
+export const PLACEHOLDER_AVATAR =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' fill='%231f1f23'/%3E%3Ccircle cx='40' cy='32' r='14' fill='%234a4a52'/%3E%3Cpath d='M16 70c0-13 11-22 24-22s24 9 24 22' fill='%234a4a52'/%3E%3C/svg%3E";
+
+export const PLACEHOLDER_IMAGE =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250'%3E%3Crect width='400' height='250' fill='%231a1a1a'/%3E%3Cpath d='M150 170l40-45 30 32 25-28 45 41z' fill='%234a4a4a'/%3E%3Ccircle cx='160' cy='95' r='18' fill='%234a4a4a'/%3E%3C/svg%3E";
+
+
 export const resolveMediaUrl = (url, fallback = '') => {
   if (!url) return fallback;
 

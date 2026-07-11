@@ -1,7 +1,12 @@
+const path = require('path');
 const Testimonial = require('../models/Testimonial');
 const { deleteFile } = require('../utils/fileUpload');
 
-const toPublicUploadPath = (file) => file.path.replace(/\\/g, '/');
+// H6 fix: Cloudinary URL হলে অপরিবর্তিত; নয়তো আপেক্ষিক uploads/<file> path
+const toPublicUploadPath = (file) => {
+    if (/^https?:\/\//i.test(file.path)) return file.path;
+    return `uploads/${path.basename(file.path)}`;
+};
 
 // @desc    Get all testimonials
 // @route   GET /api/testimonials

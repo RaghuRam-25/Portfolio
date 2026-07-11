@@ -1,26 +1,22 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { FiArrowUpRight, FiDownload } from 'react-icons/fi';
-import { projectsAPI } from '../utils/api';
+import { projectsAPI, PLACEHOLDER_AVATAR } from '../utils/api';
+import { calculateExperience } from '../utils/experience';
 
 export default function Hero({ setActiveTab, profile }) {
   // ===== নতুন: মাউস কার্সর গ্লো ইফেক্টের জন্য =====
   const sectionRef = useRef(null);
+  const rafRef = useRef(null);
   const [glowPos, setGlowPos] = useState({ x: 0, y: 0, active: false });
 
   const [projectCount, setProjectCount] = useState(0);
   const [deliveryRate, setDeliveryRate] = useState(100);
-  const [yearsExp, setYearsExp] = useState(0);
 
-  useEffect(() => {
-    if (profile?.careerStartDate) {
-      const startDate = new Date(profile.careerStartDate);
-      const today = new Date();
-      let years = today.getFullYear() - startDate.getFullYear();
-      const m = today.getMonth() - startDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < startDate.getDate())) years--;
-      setYearsExp(years > 0 ? years : 0);
-    }
-  }, [profile?.careerStartDate]);
+  // অভিজ্ঞতা start date থেকে স্বয়ংক্রিয়ভাবে Days/Weeks/Months/Years হিসেবে দেখানো হয়
+  const experienceText = useMemo(
+    () => calculateExperience(profile?.careerStartDate),
+    [profile?.careerStartDate]
+  );
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -50,8 +46,8 @@ export default function Hero({ setActiveTab, profile }) {
     if (stat.label && stat.label.toLowerCase().includes('project')) {
       return { ...stat, value: `${projectCount}+` };
     }
-    if (stat.label && stat.label.toLowerCase().includes('year')) {
-      return { ...stat, value: `${yearsExp}+` };
+    if (stat.label && (stat.label.toLowerCase().includes('year') || stat.label.toLowerCase().includes('exp'))) {
+      return { ...stat, label: 'Experience', value: experienceText };
     }
     if (stat.label && stat.label.toLowerCase().includes('delivery')) {
       return { ...stat, value: `${deliveryRate}%` };
@@ -59,14 +55,20 @@ export default function Hero({ setActiveTab, profile }) {
     return stat;
   });
 
+  // পারফরম্যান্স: প্রতিটি mousemove-এ setState না করে requestAnimationFrame দিয়ে throttle করা হয়
   const handleMouseMove = (e) => {
+    if (!sectionRef.current) return;
     const rect = sectionRef.current.getBoundingClientRect();
-    setGlowPos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      active: true,
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      setGlowPos({ x, y, active: true });
     });
   };
+
+  useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
   return (
     <section
@@ -182,13 +184,13 @@ export default function Hero({ setActiveTab, profile }) {
           <div className="flex flex-wrap items-center gap-4 pt-4 animate-slide-up animation-delay-800">
             <button
               onClick={() => setActiveTab && setActiveTab(profile?.heroSection?.ctaUrl || 'projects')}
-              className="group relative overflow-hidden px-6 py-3 rounded-xl text-sm font-bold bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:scale-105 transition-transform flex items-center gap-2 cursor-pointer"
+              className="group relative overflow-hidden px-6 py-3 rounded-xl text-sm font-bold bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:scale-105 active:scale-[0.98] transition-transform flex items-center gap-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
             >
               {/* নতুন: বাটনে শাইন/শিমার ইফেক্ট */}
               <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
               <span className="relative flex items-center gap-2">{profile?.heroSection?.ctaText || 'View My Work'} <FiArrowUpRight /></span>
             </button>
-            <a href={profile?.heroSection?.resumeUrl || '#'} download className="group relative overflow-hidden px-6 py-3 rounded-xl text-sm font-bold border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors flex items-center gap-2">
+            <a href={profile?.heroSection?.resumeUrl || '#'} download className="group relative overflow-hidden px-6 py-3 rounded-xl text-sm font-bold border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900 active:scale-[0.98] transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent">
               <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
               <span className="relative flex items-center gap-2">Resume <FiDownload /></span>
             </a>
@@ -204,7 +206,7 @@ export default function Hero({ setActiveTab, profile }) {
             <div className="absolute -inset-1 bg-gradient-to-r from-primary via-secondary to-accent rounded-3xl opacity-70 blur-md animate-spin-slow" />
 
             <div className="relative w-full h-full rounded-3xl overflow-hidden border-4 border-white dark:border-neutral-950 shadow-2xl transition-transform duration-500 group-hover:scale-[1.03]">
-              <img src={profile?.heroSection?.heroImageUrl || profile?.avatarUrl || 'https://via.placeholder.com/400'} alt="Profile" className="w-full h-full object-cover" />
+              <img src={profile?.heroSection?.heroImageUrl || profile?.avatarUrl || PLACEHOLDER_AVATAR} alt="Profile" className="w-full h-full object-cover" />
             </div>
 
             {/* নতুন: ইমেজের চারপাশে ঘুরতে থাকা অরবিট ডট */}

@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
 const { getPublicProfile, updateProfile } = require('../controllers/profileController');
 const { protect, adminOnly } = require('../middleware/authMiddleware'); // Assuming these middlewares exist for security
 const { upload } = require('../middleware/uploadMiddleware');
+
+// H6 fix: Cloudinary URL হলে অপরিবর্তিত; নয়তো আপেক্ষিক uploads/<file> path
+const toPublicUploadPath = (filePath) => {
+    if (/^https?:\/\//i.test(filePath)) return filePath;
+    return `uploads/${path.basename(filePath)}`;
+};
 
 // @route   GET /api/profile
 // Public route to get the portfolio data for anyone visiting the site.
@@ -15,7 +22,7 @@ router.post('/upload', protect, adminOnly, upload.single('file'), (req, res) => 
 
     res.status(201).json({
         success: true,
-        data: { url: req.file.path.replace(/\\/g, '/') },
+        data: { url: toPublicUploadPath(req.file.path) },
     });
 });
 

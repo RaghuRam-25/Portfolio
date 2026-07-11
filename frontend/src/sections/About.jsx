@@ -5,6 +5,7 @@ import { FaWhatsapp, FaFacebook } from 'react-icons/fa';
 // skillAPI, projectsAPI, এবং socialLinkAPI ইম্পোর্ট করা হচ্ছে
 import { skillAPI, projectsAPI, socialLinkAPI, profileAPI } from '../utils/api';
 import { sanitizeProfile } from '../utils/profileSanitizer';
+import { calculateExperience } from '../utils/experience';
 const categorizeTech = (techName) => {
   const name = techName.toLowerCase().trim();
   
@@ -50,46 +51,6 @@ const categorizeTech = (techName) => {
     return 'devops';
   }
   return 'tools';
-};
-
-const calculateExperience = (startDateStr) => {
-  if (!startDateStr) return "0 Days";
-  
-  const start = new Date(startDateStr);
-  const now = new Date();
-  
-  if (start > now) return "0 Days";
-  
-  const diffTime = now.getTime() - start.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  let years = now.getFullYear() - start.getFullYear();
-  let months = now.getMonth() - start.getMonth();
-  const days = now.getDate() - start.getDate();
-  
-  if (days < 0) {
-    months--;
-  }
-  
-  if (months < 0) {
-    years--;
-    months += 12;
-  }
-  
-  if (years === 0 && months === 0) {
-    const d = diffDays;
-    return `${d} ${d === 1 ? 'Day' : 'Days'}`;
-  }
-  
-  if (years === 0) {
-    return `${months} ${months === 1 ? 'Month' : 'Months'}`;
-  }
-  
-  let expStr = `${years} ${years === 1 ? 'Year' : 'Years'}`;
-  if (months > 0) {
-    expStr += ` ${months} ${months === 1 ? 'Month' : 'Months'}`;
-  }
-  return expStr;
 };
 
 export default function About({ profile: initialProfile }) {
@@ -191,7 +152,7 @@ export default function About({ profile: initialProfile }) {
       try {
         const response = await skillAPI.getAll();
         if (response.success) {
-          setSkills(response.data);
+          setSkills(response.data || []);
         }
       } catch (error) {
         console.error("Failed to fetch skills:", error);
@@ -208,7 +169,7 @@ export default function About({ profile: initialProfile }) {
       try {
         const response = await socialLinkAPI.getAll();
         if (response.success) {
-          setSocials(response.data);
+          setSocials(response.data || []);
         }
       } catch (error) {
         console.error("Failed to fetch social links:", error);
@@ -228,42 +189,56 @@ export default function About({ profile: initialProfile }) {
 
   const [activeFilter, setActiveFilter] = useState('all');
 
-  // ৪. ডাইনামিক গিটহাব অ্যাক্টিভিটি গ্রাফ
+  // ৪. ডাইনামিক প্রজেক্ট-ক্রিয়েশন অ্যাক্টিভিটি গ্রাফ (GitHub contribution style)
+  //    সব ডেটা আসল project.createdAt থেকে তৈরি — কোনো হার্ডকোডেড মান নেই।
   useEffect(() => {
-    if (isLoadingProjects) return; // Wait for projects to be loaded
+    if (isLoadingProjects) return; // প্রজেক্ট লোড হওয়ার অপেক্ষা
     setIsLoadingContributions(true);
 
+    // প্রজেক্ট না থাকলে গ্রিড খালি রাখা হয় (রেন্ডারে empty-state দেখানো হবে)
     if (!projects || projects.length === 0) {
-      setContributionData(Array.from({ length: 24 * 7 }, () => 0));
+      setContributionData([]);
       setIsLoadingContributions(false);
       return;
     }
 
+    // লোকাল টাইমজোনে YYYY-MM-DD কী — বাকেট ও গ্রিড সেল একই ফরম্যাট ব্যবহার করে,
+    // যাতে UTC/local mismatch-এ দিন এক ঘর সরে না যায়।
+    const toKey = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    // প্রতিটি দিনে কতগুলো প্রজেক্ট তৈরি হয়েছে তা গণনা
     const contributionsByDate = new Map();
-    projects.forEach(project => {
-      if (project.createdAt) {
-        const date = new Date(project.createdAt).toISOString().split('T')[0];
-        contributionsByDate.set(date, (contributionsByDate.get(date) || 0) + 1);
-      }
+    projects.forEach((project) => {
+      if (!project.createdAt) return;
+      const created = new Date(project.createdAt);
+      if (Number.isNaN(created.getTime())) return;
+      const key = toKey(created);
+      contributionsByDate.set(key, (contributionsByDate.get(key) || 0) + 1);
     });
 
-    const maxProjectsInDay = Math.max(...contributionsByDate.values(), 1);
-    const levelScale = 4 / maxProjectsInDay;
-
-    const totalDays = 24 * 7;
+    // ২৪ সপ্তাহের উইন্ডো যা আজকের দিনে শেষ হয় (শেষ কলাম = চলতি সপ্তাহ)।
+    const columns = 24;
     const today = new Date();
-    const startDate = new Date();
-    startDate.setDate(today.getDate() - (totalDays - 1));
-    const startDayOfWeek = startDate.getDay();
-    startDate.setDate(startDate.getDate() - startDayOfWeek);
+    today.setHours(0, 0, 0, 0);
 
+    // চলতি সপ্তাহের রবিবার, তারপর (columns-1) সপ্তাহ পিছিয়ে শুরুর রবিবার
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - today.getDay() - (columns - 1) * 7);
+
+    const totalDays = columns * 7;
     const matrix = Array.from({ length: totalDays }).map((_, i) => {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      const dateString = date.toISOString().split('T')[0];
-      const projectCountOnDate = contributionsByDate.get(dateString) || 0;
-      if (projectCountOnDate === 0) return 0;
-      return Math.max(1, Math.ceil(projectCountOnDate * levelScale));
+      // ভবিষ্যতের দিন (চলতি সপ্তাহের বাকি অংশ) খালি থাকে
+      if (date > today) return 0;
+      const count = contributionsByDate.get(toKey(date)) || 0;
+      // অ্যাবসোলিউট ইনটেনসিটি: যত বেশি প্রজেক্ট তত গাঢ় (1→1, 2→2, 3→3, 4+→4)
+      return Math.min(count, 4);
     });
 
     setContributionData(matrix);
@@ -291,7 +266,13 @@ export default function About({ profile: initialProfile }) {
 
   const recentProjectContent = useMemo(() => {
     if (!projects || projects.length === 0) return null;
-    const recentProject = [...projects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    // createdAt না থাকলে 0 ধরা হয়, যাতে সাজানো stable থাকে; সর্বশেষ প্রজেক্ট নেওয়া হয়
+    const ts = (p) => {
+      const t = p?.createdAt ? new Date(p.createdAt).getTime() : 0;
+      return Number.isNaN(t) ? 0 : t;
+    };
+    const recentProject = [...projects].sort((a, b) => ts(b) - ts(a))[0];
+    if (!recentProject) return null;
     return (
       <div className="mt-4 pt-3 border-t border-dashed border-neutral-800 text-center">
         <p className="text-[10px] uppercase tracking-wider text-neutral-500">Most Recent</p>
@@ -506,36 +487,49 @@ export default function About({ profile: initialProfile }) {
               </span>
             </div>
 
-            {/* অ্যাক্টিভিটি গ্রিড */}
-            <div className="grid grid-flow-col grid-rows-7 gap-1 overflow-x-auto pb-2 custom-scrollbar">
-              {contributionData.map((level, idx) => {
-                let colorClass = 'bg-neutral-100 dark:bg-neutral-800/80';
-                if (level === 1) colorClass = 'bg-emerald-200 dark:bg-emerald-900/60';
-                if (level === 2) colorClass = 'bg-emerald-400 dark:bg-emerald-800/80';
-                if (level === 3) colorClass = 'bg-emerald-600 dark:bg-emerald-600';
-                if (level === 4) colorClass = 'bg-emerald-800 dark:bg-emerald-400';
-
-                return (
-                  <div
-                    key={idx}
-                    className={`w-2.5 h-2.5 rounded-sm transition-colors duration-300 ${colorClass}`}
-                    title={`Level ${level} activity`}
-                  />
-                );
-              })}
-            </div>
-
-            <div className="flex justify-between items-center text-[10px] font-medium text-light-textSecondary dark:text-neutral-500 mt-3">
-              <span>Less</span>
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-sm bg-neutral-100 dark:bg-neutral-800/80"></div>
-                <div className="w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-900/60"></div>
-                <div className="w-2 h-2 rounded-sm bg-emerald-400 dark:bg-emerald-800/80"></div>
-                <div className="w-2 h-2 rounded-sm bg-emerald-600 dark:bg-emerald-600"></div>
-                <div className="w-2 h-2 rounded-sm bg-emerald-800 dark:bg-emerald-400"></div>
+            {/* অ্যাক্টিভিটি গ্রিড — প্রজেক্ট থাকলে গ্রিড, না থাকলে empty state */}
+            {!isLoadingProjects && (!projects || projects.length === 0) ? (
+              <div className="text-center py-10">
+                <FiActivity className="mx-auto text-3xl text-neutral-400 mb-2" />
+                <p className="text-sm font-bold text-light-textPrimary dark:text-dark-textPrimary">No activity yet</p>
+                <p className="text-xs text-light-textSecondary dark:text-neutral-500 mt-1">
+                  Project creation activity will appear here once you add projects.
+                </p>
               </div>
-              <span>More</span>
-            </div>
+            ) : (
+              <>
+                {/* অ্যাক্টিভিটি গ্রিড */}
+                <div className="grid grid-flow-col grid-rows-7 gap-1 overflow-x-auto pb-2 custom-scrollbar">
+                  {contributionData.map((level, idx) => {
+                    let colorClass = 'bg-neutral-100 dark:bg-neutral-800/80';
+                    if (level === 1) colorClass = 'bg-emerald-200 dark:bg-emerald-900/60';
+                    if (level === 2) colorClass = 'bg-emerald-400 dark:bg-emerald-800/80';
+                    if (level === 3) colorClass = 'bg-emerald-600 dark:bg-emerald-600';
+                    if (level === 4) colorClass = 'bg-emerald-800 dark:bg-emerald-400';
+
+                    return (
+                      <div
+                        key={idx}
+                        className={`w-2.5 h-2.5 rounded-sm transition-colors duration-300 ${colorClass}`}
+                        title={`Level ${level} activity`}
+                      />
+                    );
+                  })}
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] font-medium text-light-textSecondary dark:text-neutral-500 mt-3">
+                  <span>Less</span>
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-sm bg-neutral-100 dark:bg-neutral-800/80"></div>
+                    <div className="w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-900/60"></div>
+                    <div className="w-2 h-2 rounded-sm bg-emerald-400 dark:bg-emerald-800/80"></div>
+                    <div className="w-2 h-2 rounded-sm bg-emerald-600 dark:bg-emerald-600"></div>
+                    <div className="w-2 h-2 rounded-sm bg-emerald-800 dark:bg-emerald-400"></div>
+                  </div>
+                  <span>More</span>
+                </div>
+              </>
+            )}
 
             {recentProjectContent}
           </div>

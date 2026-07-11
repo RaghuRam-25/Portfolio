@@ -14,7 +14,10 @@ const ChatWidget = ({ user }) => {
     useEffect(() => {
         if (!user?.isLoggedIn || !user?._id) return;
 
-        const newSocket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+        const newSocket = io(SOCKET_URL, {
+            transports: ['websocket', 'polling'],
+            auth: { token: localStorage.getItem('portfolio_token') },
+        });
         setSocket(newSocket);
 
         newSocket.emit('user:connect', user._id);

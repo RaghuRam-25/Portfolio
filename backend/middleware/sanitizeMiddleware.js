@@ -25,10 +25,10 @@ const sanitizeRequest = (req, _res, next) => {
     Object.assign(req.body, sanitizedBody);
   }
 
+  // Express 5-এ req.query একটি getter (প্রতিবার re-parse হয়), তাই delete/Object.assign
+  // কোনো প্রভাব ফেলে না। সেনিটাইজ করা কুয়েরি আলাদা প্রপার্টিতে রাখা হয় (M1 fix)।
   if (req.query && Object.keys(req.query).length) {
-    const sanitizedQuery = sanitizeValue(req.query);
-    Object.keys(req.query).forEach((key) => delete req.query[key]);
-    Object.assign(req.query, sanitizedQuery);
+    req.sanitizedQuery = sanitizeValue(req.query);
   }
 
   next();

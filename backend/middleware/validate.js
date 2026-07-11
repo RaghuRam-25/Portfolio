@@ -14,6 +14,9 @@ const validate = (schema, source = 'body') => (req, res, next) => {
 
   if (source === 'body') {
     req.body = result.data;
+  } else if (source === 'query') {
+    // Express 5-এ req.query mutable নয় — validated ডেটা আলাদা প্রপার্টিতে রাখা হয়
+    req.validatedQuery = result.data;
   } else {
     Object.keys(req[source]).forEach((key) => delete req[source][key]);
     Object.assign(req[source], result.data);

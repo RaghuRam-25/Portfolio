@@ -1,7 +1,13 @@
+const path = require('path');
 const Certificate = require('../models/Certificate');
 const { deleteFile } = require('../utils/fileUpload');
 
-const toPublicUploadPath = (file) => file.path.replace(/\\/g, '/');
+// H6 fix: Cloudinary URL হলে অপরিবর্তিত রাখা হয়; নয়তো আপেক্ষিক web path (uploads/<file>)
+// সংরক্ষণ করা হয় — অ্যাবসোলিউট ফাইলসিস্টেম পাথ নয় (ভাঙা ইমেজ + path disclosure প্রতিরোধ)।
+const toPublicUploadPath = (file) => {
+    if (/^https?:\/\//i.test(file.path)) return file.path;
+    return `uploads/${path.basename(file.path)}`;
+};
 
 // @desc    Get all certificates
 // @route   GET /api/certificates

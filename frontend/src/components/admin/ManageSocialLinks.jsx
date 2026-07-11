@@ -174,7 +174,7 @@ export default function ManageSocialLinks({ showToast }) {
                 <div className="text-center p-8 text-neutral-400"><FiInfo className="text-5xl mx-auto mb-4" /><p>No social links yet.</p></div>
             ) : (
                 <div className="space-y-2">
-                    {links.sort((a, b) => a.order - b.order).map(l => (
+                    {[...links].sort((a, b) => a.order - b.order).map(l => (
                         <div key={l._id} className="flex items-center gap-3 p-3 bg-neutral-800/50 rounded-lg hover:bg-neutral-800 transition-colors">
                             <span className="text-lg text-accent-purple">{getPlatformIcon(l.platform)}</span>
                             <div className="flex-1 min-w-0">

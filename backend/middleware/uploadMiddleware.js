@@ -23,15 +23,20 @@ const storage = multer.diskStorage({
 });
 
 // ফাইল ফিল্টার (শুধুমাত্র ছবি আপলোড করার জন্য)
+// নিরাপত্তা: SVG বাদ দেওয়া হয়েছে — এতে <script> এম্বেড করে stored-XSS সম্ভব (M5)।
 const fileFilter = (req, file, cb) => {
-    const allowedExtensions = /jpeg|jpg|png|gif|svg|webp|ico|pdf|mp4|webm|mov|ogg/;
+    const allowedExtensions = /jpeg|jpg|png|gif|webp|ico|pdf|mp4|webm|mov|ogg/;
     const extname = allowedExtensions.test(path.extname(file.originalname).toLowerCase());
+    const isSvg = file.mimetype === 'image/svg+xml' || /\.svg$/i.test(file.originalname);
     const mimetype = file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/') || file.mimetype === 'application/pdf' || file.mimetype === 'image/x-icon';
 
-    if (mimetype && extname) {
+    if (mimetype && extname && !isSvg) {
         return cb(null, true);
     }
-    cb(new Error('Error: Only image, video, icon, and PDF files are allowed!'));
+    // অবৈধ ফাইল টাইপ 400 হিসেবে রিপোর্ট করা হয় (M4 — নয়তো errorMiddleware 500 দেয়)
+    const err = new Error('Error: Only image (non-SVG), video, icon, and PDF files are allowed!');
+    err.statusCode = 400;
+    cb(err);
 };
 
 // মাল্টার ইনস্ট্যান্স তৈরি

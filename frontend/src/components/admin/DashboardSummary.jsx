@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { FiAward, FiArchive, FiCheckCircle } from 'react-icons/fi';
 import { projectsAPI } from '../../utils/api';
+import { calculateExperience } from '../../utils/experience';
 
 const iconMap = {
     "Years Exp": <FiAward />,
+    "Experience": <FiAward />,
     "Projects": <FiArchive />,
     "Delivery": <FiCheckCircle />,
 };
 
 const colorMap = {
     "Years Exp": 'text-blue-500',
+    "Experience": 'text-blue-500',
     "Projects": 'text-emerald-500',
     "Delivery": 'text-purple-500',
 };
@@ -17,18 +20,9 @@ const colorMap = {
 export default function DashboardSummary({ profile }) {
     const [projectCount, setProjectCount] = useState(0);
     const [deliveryRate, setDeliveryRate] = useState(100);
-    const [yearsExp, setYearsExp] = useState(0);
 
-    useEffect(() => {
-        if (profile?.careerStartDate) {
-            const startDate = new Date(profile.careerStartDate);
-            const today = new Date();
-            let years = today.getFullYear() - startDate.getFullYear();
-            const m = today.getMonth() - startDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < startDate.getDate())) years--;
-            setYearsExp(years > 0 ? years : 0);
-        }
-    }, [profile?.careerStartDate]);
+    // অভিজ্ঞতা start date থেকে স্বয়ংক্রিয়ভাবে Days/Weeks/Months/Years হিসেবে
+    const experienceText = calculateExperience(profile?.careerStartDate);
 
     useEffect(() => {
         const fetchProjectData = async () => {
@@ -58,8 +52,8 @@ export default function DashboardSummary({ profile }) {
         if (stat.label && stat.label.toLowerCase().includes('project')) {
             return { ...stat, value: `${projectCount}+` };
         }
-        if (stat.label && stat.label.toLowerCase().includes('year')) {
-            return { ...stat, value: `${yearsExp}+` };
+        if (stat.label && (stat.label.toLowerCase().includes('year') || stat.label.toLowerCase().includes('exp'))) {
+            return { ...stat, label: 'Experience', value: experienceText };
         }
         if (stat.label && stat.label.toLowerCase().includes('delivery')) {
             return { ...stat, value: `${deliveryRate}%` };

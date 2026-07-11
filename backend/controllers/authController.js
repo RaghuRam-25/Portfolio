@@ -55,18 +55,33 @@ exports.register = async (req, res, next) => {
             <p>Please verify your email by clicking on this link: <a href="${verificationUrl}">${verificationUrl}</a></p>
             <p>This link will expire in 1 hour.</p>
         `;
-        await sendEmail({
-            email: user.email,
-            subject: 'Verify Your Email for Your Portfolio Account',
-            html: emailHtml,
-        });
+        // ইমেইল পাঠাতে ব্যর্থ হলে সদ্য তৈরি হওয়া ইউজার রোলব্যাক করা হয়,
+        // যাতে ইমেইলটি "নেওয়া" অবস্থায় আটকে না থাকে (M6)।
+        try {
+            await sendEmail({
+                email: user.email,
+                subject: 'Verify Your Email for Your Portfolio Account',
+                html: emailHtml,
+            });
+        } catch (mailError) {
+            await User.deleteOne({ _id: user._id });
+            return res.status(502).json({
+                success: false,
+                message: 'Could not send the verification email. Please try registering again shortly.',
+            });
+        }
 
         res.status(201).json({ success: true, message: 'Registration successful! Please check your email for verification.', user: { _id: user._id, name: user.name, email: user.email } });
 
     } catch (error) {
-        // Zod এর এরর হ্যান্ডল করা
+        // Zod এর এরর হ্যান্ডল করা — Zod 4-এ issues property ব্যবহার হয় (errors নয়)
         if (error.name === 'ZodError') {
-            return res.status(400).json({ success: false, errors: error.errors.map(e => e.message) });
+            const issues = error.issues || error.errors || [];
+            return res.status(400).json({ success: false, errors: issues.map(e => e.message) });
+        }
+        // ডুপ্লিকেট কী (E11000) কে পরিষ্কার 409 হিসেবে রিপোর্ট করা হয় (M3)
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
         }
         next(error);
     }
@@ -139,6 +154,16 @@ exports.login = async (req, res, next) => {
 // OAuth Callback Controller
 exports.oauthCallback = (req, res, next) => {
     try {
+        // req.user না থাকলে (স্ট্র্যাটেজি ব্যর্থ) নিরাপদে ফ্রন্টএন্ডে এরর সহ ফেরত পাঠানো হয়
+        if (!req.user) {
+            return res.redirect(`${process.env.FRONTEND_URL}/auth-portal?verificationError=true`);
+        }
+
+        // ব্লক করা ইউজারকে কোনো টোকেন দেওয়া হয় না (M7)
+        if (req.user.isBlocked) {
+            return res.redirect(`${process.env.FRONTEND_URL}/auth-portal?verificationError=blocked`);
+        }
+
         const token = generateToken(req.user._id);
         const { _id, name, email, avatarUrl, role } = req.user;
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
+import { PLACEHOLDER_AVATAR } from '../utils/api';
 
 
 export default function HeroIntro({ onComplete, profile }) {
@@ -11,46 +12,31 @@ export default function HeroIntro({ onComplete, profile }) {
 
   const [animationPhase, setAnimationPhase] = useState('dark');
 
-  // মাউস ট্র্যাকিং কণার জন্য ফ্রেমার মোশন ভ্যারিয়েবল (Awwwards Feature)
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 60, damping: 15 });
-  const springY = useSpring(mouseY, { stiffness: 60, damping: 15 });
-
   useEffect(() => {
-    // মাউস মুভমেন্ট লিসেনার
-    const handleMouseMove = (e) => {
-      const { clientX, clientY } = e;
-      const { innerWidth, innerHeight } = window;
-      // স্ক্রিনের সেন্টার থেকে মাউসের দূরত্ব হিসাব
-      mouseX.set((clientX - innerWidth / 2) * 0.15);
-      mouseY.set((clientY - innerHeight / 2) * 0.15);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-
-    // গুগল ফন্ট লোড
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Alex+Brush&family=Plus+Jakarta+Sans:wght@400;700;900&display=swap';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-
-    // যদি প্রোফাইল ডেটা না থাকে, তাহলে অ্যানিমেশন শুরু হবে না।
+    // যদি প্রোফাইল ডেটা না থাকে, তাহলে অ্যানিমেশন শুরু হবে না (লোডার হিসেবে থাকে)।
     if (!profile) {
       return;
+    }
+
+    // অ্যাক্সেসিবিলিটি: reduced-motion হলে সিনেম্যাটিক টাইমলাইন এড়িয়ে দ্রুত এগিয়ে যাওয়া
+    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) {
+      setAnimationPhase('reveal');
+      const t = setTimeout(onComplete, 300);
+      return () => clearTimeout(t);
     }
 
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         onComplete: () => {
-          gsap.delayedCall(0, onComplete); // সব শেষে ৩ সেকেন্ড হোল্ড করবে
+          gsap.delayedCall(0, onComplete);
         }
       });
 
       // ১. শুরুতে ডার্ক স্ক্রিন
       tl.to(containerRef.current, { opacity: 1, duration: 0.1 });
 
-      // Q৩. এনার্জি গ্যাদারিং ও ক্রিস্টাল ক্লিয়ার ইমেজ
+      // Q৩. এনার্জি গ্যাদারিং ও ক্রিস্টাল ক্লিয়ার ইমেজ
       tl.add(() => setAnimationPhase('reveal'), "+=0.8");
 
       tl.fromTo(imageWrapperRef.current,
@@ -69,17 +55,8 @@ export default function HeroIntro({ onComplete, profile }) {
 
     return () => {
       ctx.revert();
-      window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [onComplete, mouseX, mouseY, profile]);
-
-  // ২৫টি ইন্টারেক্টিভ কণা
-  const particles = Array.from({ length: 30 }, (_, index) => ({
-    id: index,
-    size: 2 + (index % 4),
-    left: `${(index * 7) % 100}%`,
-    top: `${(index * 11) % 100}%`,
-  }));
+  }, [onComplete, profile]);
 
   return (
     <div
@@ -87,14 +64,21 @@ export default function HeroIntro({ onComplete, profile }) {
       className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#02040a] select-none overflow-hidden"
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
+      {/* Skip বাটন — ইউজার যেকোনো সময় ইন্ট্রো এড়িয়ে যেতে পারে */}
+      <button
+        onClick={onComplete}
+        className="absolute top-5 right-5 z-40 px-4 py-2 text-xs font-bold tracking-wider uppercase rounded-full border border-cyan-400/30 text-cyan-300/80 hover:text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-400/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
+        aria-label="Skip intro animation"
+      >
+        Skip Intro
+      </button>
+
       {/* ফিউচারিস্টিক গ্রিড ব্যাকগ্রাউন্ড */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.15)_0%,transparent_70%)] pointer-events-none" />
       <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:4rem_4rem]" />
 
       {/* লাইটনিং ফ্ল্যাশ */}
       <div ref={flashRef} className="absolute inset-0 bg-cyan-200 pointer-events-none opacity-0 z-10 mix-blend-overlay" />
-
-      {/* মেইন ৩D বিজলি থ্রেড (বাম এবং ডান উভয় দিকেই সিমেট্রিক্যালি শো করার জন্য ডুপ্লিকেট করা হয়েছে) */}
 
       {/* কন্টেন্ট বক্স */}
       <div className="relative flex flex-col items-center justify-center max-w-4xl text-center px-6 z-30">
@@ -114,21 +98,21 @@ export default function HeroIntro({ onComplete, profile }) {
             className="w-full h-full rounded-full overflow-hidden border-2 border-cyan-400/40 shadow-[0_0_50px_rgba(6,182,212,0.3)] bg-neutral-900 opacity-0"
           >
             <img
-              src={profile?.heroSection?.heroImageUrl || profile?.avatarUrl || 'https://via.placeholder.com/400'}
+              src={profile?.heroSection?.heroImageUrl || profile?.avatarUrl || PLACEHOLDER_AVATAR}
               alt="Profile Avatar"
               className="w-full h-full object-cover"
             />
           </div>
         </div>
 
-        {/* হাতের লেখায় বোল্ড নাম (Alex Brush + কাস্টম স্ট্রোক) */}
+        {/* হাতের লেখায় বোল্ড নাম (Alex Brush + কাস্টম স্ট্রোক) */}
         <div className="h-24 w-[320px] md:w-[500px] flex items-center justify-center overflow-visible">
           <svg viewBox="0 0 500 100" className="w-full h-full overflow-visible">
             <text
               x="50%"
               y="65%"
               textAnchor="middle"
-              className="drawn-text text-6xl md:text-7xl font-black tracking-wider fill-none stroke-cyan-400 stroke-[2]" // stroke-[2] দিয়ে বর্ডার বোল্ড করেছি
+              className="drawn-text text-6xl md:text-7xl font-black tracking-wider fill-none stroke-cyan-400 stroke-[2]"
               style={{
                 fontFamily: "'Alex Brush', 'Palace Script MT', cursive",
                 strokeDasharray: '1200',

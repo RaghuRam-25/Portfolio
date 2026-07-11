@@ -30,7 +30,7 @@ router.post('/', async (req, res) => {
 
     // রিয়েল-টাইম নোটিফিকেশনের জন্য ইভেন্ট এমিট করা
     if (req.app.get('io')) {
-      req.app.get('io').emit('newMessage', newMessage);
+      req.app.get('io').to('admins').emit('newMessage', newMessage);
     }
 
     res.status(201).json({ success: true, message: 'Message received!', data: newMessage });
@@ -60,7 +60,7 @@ router.post('/secure', protect, async (req, res) => {
 
     // রিয়েল-টাইম নোটিফিকেশনের জন্য ইভেন্ট এমিট করা
     if (req.app.get('io')) {
-      req.app.get('io').emit('newMessage', newMessage);
+      req.app.get('io').to('admins').emit('newMessage', newMessage);
     }
 
     res.status(201).json({ success: true, message: 'Secure message sent!', data: newMessage });
@@ -175,7 +175,7 @@ router.post('/payment-confirmation', protect, async (req, res) => {
 
     // নতুন পেমেন্ট কনফার্মেশনের জন্য রিয়েল-টাইম নোটিফিকেশন
     if (req.app.get('io')) {
-      req.app.get('io').emit('newPaymentConfirmation', newMessage);
+      req.app.get('io').to('admins').emit('newPaymentConfirmation', newMessage);
     }
 
     // Find portfolio owner for email signature
@@ -236,7 +236,7 @@ router.post('/:id/user-reply', protect, async (req, res) => {
     const updatedMessage = await Message.findById(originalMessage._id).populate({ path: 'replies.repliedBy', select: 'name role avatarUrl' }).populate('userId', 'name email avatarUrl');
 
     if (req.app.get('io')) {
-      req.app.get('io').emit('newReply', updatedMessage);
+      req.app.get('io').to('admins').emit('newReply', updatedMessage);
     }
 
     res.json({ success: true, message: 'Reply sent successfully!', data: updatedMessage });

@@ -76,10 +76,44 @@ const io = new Server(server, {
 app.set('io', io);
 app.set('trust proxy', 1);
 
+// ============================================================
+// Socket.IO প্রমাণীকরণ (C1 fix)
+//   প্রতিটি সকেট কানেকশনের handshake-এ একটি বৈধ JWT থাকতে হবে।
+//   পরিচয় (userId/role) টোকেন থেকে নেওয়া হয় — ক্লায়েন্ট-প্রদত্ত আইডি
+//   আর বিশ্বাস করা হয় না, তাই কেউ অন্যের চ্যাট পড়তে/ইম্পারসোনেট করতে পারে না।
+//   অ্যাডমিন সকেট স্বয়ংক্রিয়ভাবে 'admins' রুমে যোগ দেয়।
+// ============================================================
+const jwt = require('jsonwebtoken');
+const User = require('./models/User');
+
+io.use(async (socket, next) => {
+  try {
+    const token =
+      socket.handshake.auth?.token ||
+      (socket.handshake.headers?.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!token) return next(new Error('Authentication required'));
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findOne({ _id: decoded.id, deletedAt: null }).select('name email avatarUrl role isBlocked');
+    if (!user || user.isBlocked) return next(new Error('Not authorized'));
+
+    socket.user = { _id: user._id.toString(), name: user.name, email: user.email, avatarUrl: user.avatarUrl, role: user.role };
+    next();
+  } catch {
+    next(new Error('Authentication failed'));
+  }
+});
+
 io.on('connection', (socket) => {
-  socket.on('user:connect', async (userId) => {
+  // অ্যাডমিন হলে সংযোগেই 'admins' রুমে যোগ দেওয়া হয় (নোটিফিকেশনের জন্য)
+  if (socket.user?.role === 'admin') {
+    socket.join('admins');
+  }
+
+  socket.on('user:connect', async () => {
     try {
-      if (!userId) return;
+      // পরিচয় টোকেন থেকে — ক্লায়েন্ট আর্গুমেন্ট উপেক্ষা করা হয়
+      const userId = socket.user._id;
       socket.join(userId);
       const ChatSession = require('./models/ChatSession');
       const chatSession = await ChatSession.findOne({ user: userId })
@@ -91,9 +125,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('admin:connect', async (adminId) => {
+  socket.on('admin:connect', async () => {
     try {
-      if (!adminId) return;
+      // শুধুমাত্র প্রমাণিত অ্যাডমিনই সব সেশন দেখতে পারে
+      if (socket.user?.role !== 'admin') return;
       socket.join('admins');
       const ChatSession = require('./models/ChatSession');
       const sessions = await ChatSession.find({ isArchived: false })
@@ -106,9 +141,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('user:send_message', async ({ userId, message }) => {
+  socket.on('user:send_message', async ({ message }) => {
     try {
-      if (!userId || !message?.trim()) return;
+      const userId = socket.user._id; // প্রেরক টোকেন থেকে
+      if (!message?.trim()) return;
       const ChatSession = require('./models/ChatSession');
       const chatSession = await ChatSession.findOneAndUpdate(
         { user: userId },
@@ -129,9 +165,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('admin:send_message', async ({ adminId, userId, message }) => {
+  socket.on('admin:send_message', async ({ userId, message }) => {
     try {
-      if (!adminId || !userId || !message?.trim()) return;
+      // শুধুমাত্র প্রমাণিত অ্যাডমিন বার্তা পাঠাতে পারে; প্রেরক আইডি টোকেন থেকে
+      if (socket.user?.role !== 'admin') return;
+      const adminId = socket.user._id;
+      if (!userId || !message?.trim()) return;
       const ChatSession = require('./models/ChatSession');
       const chatSession = await ChatSession.findOneAndUpdate(
         { user: userId },
@@ -154,6 +193,7 @@ io.on('connection', (socket) => {
 
   socket.on('admin:mark_read', async (sessionId) => {
     try {
+      if (socket.user?.role !== 'admin') return;
       const ChatSession = require('./models/ChatSession');
       await ChatSession.findByIdAndUpdate(sessionId, { adminHasUnread: false });
     } catch (error) {

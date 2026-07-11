@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiGithub, FiExternalLink, FiLoader, FiInfo, FiLayers } from 'react-icons/fi';
-import { projectsAPI, resolveMediaUrl } from '../utils/api';
+import { projectsAPI, resolveMediaUrl, PLACEHOLDER_IMAGE } from '../utils/api';
 
 export default function Projects({ profile }) {
   const [projects, setProjects] = useState([]);
@@ -14,7 +14,7 @@ export default function Projects({ profile }) {
         setIsLoading(true);
         const response = await projectsAPI.getAll();
         if (response.success) {
-          setProjects(response.data);
+          setProjects(response.data || []);
         } else {
           throw new Error(response.message || 'Failed to fetch projects.');
         }
@@ -73,7 +73,7 @@ export default function Projects({ profile }) {
               >
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={resolveMediaUrl(project.thumbnail, 'https://via.placeholder.com/400x250/1a1a1a/4a4a4a?text=No+Image')}
+                    src={resolveMediaUrl(project.thumbnail, PLACEHOLDER_IMAGE)}
                     alt={project.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
@@ -84,7 +84,7 @@ export default function Projects({ profile }) {
                   <h3 className="text-lg font-bold text-white mb-2 truncate">{project.title}</h3>
                   <p className="text-xs text-neutral-400 mb-4 h-12 overflow-hidden text-ellipsis">{project.description}</p>
                   <div className="flex flex-wrap gap-2 mb-4 h-12 overflow-y-auto">
-                    {project.techStack.map((tech, i) => (<span key={i} className="text-[10px] font-bold bg-neutral-800 text-neutral-300 px-2 py-1 rounded-full">{tech}</span>))}
+                    {(project.techStack || []).map((tech, i) => (<span key={i} className="text-[10px] font-bold bg-neutral-800 text-neutral-300 px-2 py-1 rounded-full">{tech}</span>))}
                   </div>
                   <div className="flex justify-end gap-4 mt-4 pt-4 border-t border-neutral-800">
                     {project.githubUrl && <a href={project.githubUrl} target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-white transition-colors" title="GitHub Repository"><FiGithub size={20} /></a>}

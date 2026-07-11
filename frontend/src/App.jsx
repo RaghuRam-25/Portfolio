@@ -29,7 +29,14 @@ const HeroIntro = React.lazy(() => import('./components/HeroIntro'));
 // App component
 function App() {
   const [activeTab, setActiveTab] = useState('home');
-  const [showIntro, setShowIntro] = useState(true); // ইন্ট্রো অ্যানিমেশন আবার চালু করা হলো
+  // ইন্ট্রো অ্যানিমেশন সেশনে একবারই দেখানো হয় (রিফ্রেশ/ট্যাব সুইচে বারবার নয়)
+  const [showIntro, setShowIntro] = useState(() => {
+    try {
+      return sessionStorage.getItem('introSeen') !== '1';
+    } catch {
+      return true;
+    }
+  });
   const [profileData, setProfileData] = useState(null); // ডাইনামিক প্রোফাইল ডেটার জন্য স্টেট
   const [estimation, setEstimation] = useState(null);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
@@ -144,12 +151,15 @@ function App() {
   // নতুন: রিয়েল-টাইম নোটিফিকেশনের জন্য সকেট কানেকশন
   useEffect(() => {
     if (user.isLoggedIn && user.role === 'admin') {
-      const socket = io(SOCKET_URL);
+      const socket = io(SOCKET_URL, {
+        auth: { token: localStorage.getItem('portfolio_token') },
+      });
 
       const handleNewMessage = (message) => {
         setNotification({
           show: true,
           message: `New message from ${message.senderName}`,
+          type: 'success',
         });
       };
 
@@ -157,6 +167,7 @@ function App() {
         setNotification({
           show: true,
           message: `New payment confirmation from ${message.senderName}`,
+          type: 'success',
         });
       };
 
@@ -164,6 +175,7 @@ function App() {
         setNotification({
           show: true,
           message: `New reply from ${message.senderName}`,
+          type: 'success',
         });
       };
 
@@ -183,7 +195,10 @@ function App() {
   // ধাপ ১: ইন্ট্রো অ্যানিমেশন দেখানো, যতক্ষণ না এটি শেষ হচ্ছে
   // ডেটা লোড না হওয়া পর্যন্ত ইন্ট্রো দেখানো হবে, যাতে কোনো লোডার না দেখা যায়
   if (showIntro || !profileData) {
-    return <HeroIntro onComplete={() => setShowIntro(false)} profile={profileData} />;
+    return <HeroIntro onComplete={() => {
+      try { sessionStorage.setItem('introSeen', '1'); } catch { /* ignore */ }
+      setShowIntro(false);
+    }} profile={profileData} />;
   }
 
   const renderSection = () => {

@@ -1,14 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function Toast({ message, type, onClose }) {
   // ৩ সেকেন্ড পর টোস্টটি অটোমেটিক বন্ধ হয়ে যাওয়ার জন্য
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      onClose();
+      onCloseRef.current?.();
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, []);
 
   const isSuccess = type === 'success';
 

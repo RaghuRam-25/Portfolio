@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../../utils/api';
+import { SOCKET_URL, PLACEHOLDER_AVATAR } from '../../utils/api';
 import { FiSend, FiMessageSquare, FiUser, FiArrowLeft } from 'react-icons/fi';
 import Spinner from '../ui/Spinner';
 
@@ -20,7 +20,10 @@ const LiveChat = ({ adminUser }) => {
     useEffect(() => {
         if (!adminUser?._id) return;
 
-        const newSocket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+        const newSocket = io(SOCKET_URL, {
+            transports: ['websocket', 'polling'],
+            auth: { token: localStorage.getItem('portfolio_token') },
+        });
         setSocket(newSocket);
 
         newSocket.emit('admin:connect', adminUser._id);
@@ -106,7 +109,7 @@ const LiveChat = ({ adminUser }) => {
                     ) : (
                         sessions.map(session => (
                             <div key={session._id} onClick={() => handleSelectSession(session)} className={`p-3 rounded-lg cursor-pointer mb-2 flex items-center gap-3 ${selectedSession?._id === session._id ? 'bg-accent-blue/10' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50'}`}>
-                                <img src={session.user?.avatarUrl || 'https://via.placeholder.com/80'} alt={session.user?.name || 'User'} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                                <img src={session.user?.avatarUrl || PLACEHOLDER_AVATAR} alt={session.user?.name || 'User'} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className={`font-bold text-sm truncate ${session.adminHasUnread ? 'text-accent-blue' : ''}`}>{session.user.name}</p>
                                     <p className="text-xs text-neutral-500 truncate">{session.messages?.[session.messages.length - 1]?.message || 'No messages yet.'}</p>
@@ -125,7 +128,7 @@ const LiveChat = ({ adminUser }) => {
                                 <button onClick={() => setSelectedSession(null)} className="md:hidden p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500">
                                     <FiArrowLeft />
                                 </button>
-                                <img src={selectedSession.user?.avatarUrl || 'https://via.placeholder.com/80'} alt={selectedSession.user?.name || 'User'} className="w-9 h-9 rounded-full object-cover" />
+                                <img src={selectedSession.user?.avatarUrl || PLACEHOLDER_AVATAR} alt={selectedSession.user?.name || 'User'} className="w-9 h-9 rounded-full object-cover" />
                                 <div className="min-w-0">
                                     <p className="font-bold text-sm truncate">{selectedSession.user?.name || 'User'}</p>
                                     <p className="text-xs text-neutral-500 truncate">{selectedSession.user?.email}</p>
@@ -136,7 +139,7 @@ const LiveChat = ({ adminUser }) => {
                                     const isAdmin = msg.sender?.role === 'admin' || msg.sender?._id === adminUser._id;
                                     return (
                                     <div key={msg._id || index} className={`flex items-end gap-2.5 ${isAdmin ? 'justify-end' : 'justify-start'}`}>
-                                        {!isAdmin && <img src={msg.sender?.avatarUrl || selectedSession.user?.avatarUrl || 'https://via.placeholder.com/80'} alt={msg.sender?.name || 'User'} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />}
+                                        {!isAdmin && <img src={msg.sender?.avatarUrl || selectedSession.user?.avatarUrl || PLACEHOLDER_AVATAR} alt={msg.sender?.name || 'User'} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />}
                                         <div className={`max-w-[82%] sm:max-w-[75%] p-2.5 rounded-xl text-sm break-words whitespace-pre-wrap ${isAdmin ? 'bg-accent-blue text-white rounded-br-none' : 'bg-white dark:bg-neutral-800 rounded-bl-none border border-light-border dark:border-neutral-700/60'} ${msg.isOptimistic ? 'opacity-80' : ''}`}>{msg.message}</div>
                                         {isAdmin && (adminUser.avatarUrl ? <img src={adminUser.avatarUrl} alt={adminUser.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" /> : <div className="w-7 h-7 rounded-full bg-accent-blue/10 text-accent-blue flex items-center justify-center flex-shrink-0"><FiUser /></div>)}
                                     </div>

@@ -16,6 +16,64 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
+// ============================================================
+// নিরাপদ OAuth লিংকিং হেল্পার (C2 fix — account-takeover প্রতিরোধ)
+//   - প্রথমে providerId দিয়ে বিদ্যমান OAuth ইউজার খোঁজা হয়।
+//   - ইমেইল দিয়ে লিংক করা হয় শুধুমাত্র যখন প্রোভাইডার ইমেইলটি "verified" নিশ্চিত করে।
+//   - কোনো local (password) অ্যাকাউন্টকে কখনো ওভাররাইট/ডিমোট করা হয় না —
+//     শুধু providerId যোগ করা হয়, provider অপরিবর্তিত থাকে, তাই password login কাজ করতেই থাকে।
+//   - unverified ইমেইল বিদ্যমান কোনো অ্যাকাউন্টের সাথে মিললে লিংক করা হয় না (takeover ব্লক)।
+// ============================================================
+const findOrLinkOAuthUser = async ({ provider, profile, emailVerified }) => {
+  // ১. আগে থেকেই এই প্রোভাইডার-আইডি দিয়ে অ্যাকাউন্ট আছে কিনা
+  let user = await User.findOne({ providerId: profile.id, provider });
+  if (user) {
+    if (profile.photos && profile.photos[0] && !user.avatarUrl) {
+      user.avatarUrl = profile.photos[0].value;
+      await user.save();
+    }
+    return { user };
+  }
+
+  const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
+
+  // ২. ইমেইল দিয়ে বিদ্যমান অ্যাকাউন্ট খোঁজা
+  if (email) {
+    const existing = await User.findOne({ email });
+    if (existing) {
+      // নিরাপত্তা: ইমেইল verified না হলে লিংক করা হবে না (impersonation প্রতিরোধ)
+      if (!emailVerified) {
+        return { user: false, message: 'This email is already registered. Please log in with your password to link this provider.' };
+      }
+      // verified — providerId যোগ করা হয়, কিন্তু local provider অপরিবর্তিত রাখা হয়
+      if (!existing.providerId) {
+        existing.providerId = profile.id;
+      }
+      if (existing.provider !== 'local' && existing.provider !== provider) {
+        // একটি ভিন্ন OAuth প্রোভাইডার — নিরাপদে বর্তমানটিতে সেট করা হয়
+        existing.provider = provider;
+        existing.providerId = profile.id;
+      }
+      if (profile.photos && profile.photos[0] && !existing.avatarUrl) {
+        existing.avatarUrl = profile.photos[0].value;
+      }
+      await existing.save();
+      return { user: existing };
+    }
+  }
+
+  // ৩. নতুন ইউজার তৈরি
+  user = await User.create({
+    name: profile.displayName || profile.username,
+    email: email || `${profile.id}@${provider}-oauth.com`,
+    provider,
+    providerId: profile.id,
+    avatarUrl: profile.photos && profile.photos[0] ? profile.photos[0].value : '',
+    role: 'user',
+  });
+  return { user };
+};
+
 // Google Strategy
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID || 'dummy_id',
@@ -25,35 +83,13 @@ passport.use(new GoogleStrategy({
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
-      let user = await User.findOne({ providerId: profile.id, provider: 'google' });
-      if (!user) {
-        // email check if they already registered locally
-        const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
-        if (email) {
-          user = await User.findOne({ email });
-        }
-        
-        if (user) {
-          // Link google id
-          user.provider = 'google';
-          user.providerId = profile.id;
-          if (profile.photos && profile.photos[0]) {
-            user.avatarUrl = profile.photos[0].value;
-          }
-          await user.save();
-        } else {
-          // Create new user
-          user = await User.create({
-            name: profile.displayName || profile.username,
-            email: email || `${profile.id}@google-oauth.com`,
-            provider: 'google',
-            providerId: profile.id,
-            avatarUrl: profile.photos && profile.photos[0] ? profile.photos[0].value : '',
-            role: 'user'
-          });
-        }
-      }
-      return done(null, user);
+      // Google email_verified ফ্ল্যাগ (boolean অথবা string 'true' হতে পারে)
+      const rawVerified = (profile._json && profile._json.email_verified) ??
+        (profile.emails && profile.emails[0] && profile.emails[0].verified);
+      const emailVerified = rawVerified === true || rawVerified === 'true';
+
+      const { user, message } = await findOrLinkOAuthUser({ provider: 'google', profile, emailVerified });
+      return done(null, user, message ? { message } : undefined);
     } catch (err) {
       return done(err, null);
     }
@@ -69,32 +105,11 @@ passport.use(new GitHubStrategy({
   },
   async (accessToken, refreshToken, profile, done) => {
     try {
-      let user = await User.findOne({ providerId: profile.id, provider: 'github' });
-      if (!user) {
-        const email = profile.emails && profile.emails[0] ? profile.emails[0].value : '';
-        if (email) {
-          user = await User.findOne({ email });
-        }
+      // passport-github2 নির্ভরযোগ্যভাবে verified ফ্ল্যাগ দেয় না — শুধু explicit true হলেই verified ধরা হয়।
+      const emailVerified = !!(profile.emails && profile.emails[0] && profile.emails[0].verified === true);
 
-        if (user) {
-          user.provider = 'github';
-          user.providerId = profile.id;
-          if (profile.photos && profile.photos[0]) {
-            user.avatarUrl = profile.photos[0].value;
-          }
-          await user.save();
-        } else {
-          user = await User.create({
-            name: profile.displayName || profile.username,
-            email: email || `${profile.id}@github-oauth.com`,
-            provider: 'github',
-            providerId: profile.id,
-            avatarUrl: profile.photos && profile.photos[0] ? profile.photos[0].value : '',
-            role: 'user'
-          });
-        }
-      }
-      return done(null, user);
+      const { user, message } = await findOrLinkOAuthUser({ provider: 'github', profile, emailVerified });
+      return done(null, user, message ? { message } : undefined);
     } catch (err) {
       return done(err, null);
     }

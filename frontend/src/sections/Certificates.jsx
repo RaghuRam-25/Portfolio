@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiAward, FiLoader, FiInfo, FiExternalLink, FiCalendar } from 'react-icons/fi';
-import { certificateAPI } from '../utils/api';
+import { certificateAPI, PLACEHOLDER_IMAGE } from '../utils/api';
 
 export default function Certificates({ profile }) {
     const [certificates, setCertificates] = useState([]);
@@ -72,7 +72,7 @@ export default function Certificates({ profile }) {
                                 style={{ animationDelay: `${index * 100}ms` }}
                             >
                                 <div className="relative aspect-[4/3] overflow-hidden bg-neutral-800">
-                                    <img src={cert.certificateImage || 'https://via.placeholder.com/400x300/1a1a1a/4a4a4a?text=No+Image'} alt={cert.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 p-2" />
+                                    <img src={cert.certificateImage || PLACEHOLDER_IMAGE} alt={cert.name} className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110 p-2" />
                                 </div>
                                 <div className="p-6">
                                     <h3 className="text-base font-bold text-white mb-1 truncate" title={cert.name}>{cert.name}</h3>

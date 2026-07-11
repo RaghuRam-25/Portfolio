@@ -25,9 +25,9 @@ export default function Services({ profile }) {
           productAPI.getAll(),
           categoryAPI.getAll()
         ]);
-        if (prodRes.success) setProducts(prodRes.data);
+        if (prodRes.success) setProducts(prodRes.data || []);
         else throw new Error(prodRes.message || 'Failed to fetch services.');
-        if (catRes.success) setCategories(catRes.data);
+        if (catRes.success) setCategories(catRes.data || []);
       } catch (err) {
         setError(err.message);
         console.error("Error fetching services:", err);

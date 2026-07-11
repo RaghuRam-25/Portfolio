@@ -141,20 +141,6 @@
 @keyframes fill-text {
   to {
     fill: #FFFFFF;
-    stroke: transparent;
-  }
-}
-
-/* নামের লেখাটি ড্রয়িং হয়ে বোল্ড আকারে ভরাট হওয়ার জন্য */
-@keyframes stroke-write {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes fill-text {
-  to {
-    fill: #FFFFFF;
     stroke: rgba(34, 211, 238, 0.4);
     stroke-width: 1px;
     filter: drop-shadow(0px 0px 12px rgba(34, 211, 238, 0.8));
@@ -259,3 +245,25 @@
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #404040; border-radius: 9999px; }
+
+/* ============================================================= */
+/* ===   ACCESSIBILITY: Reduced Motion                       === */
+/*  যেসব ইউজার prefers-reduced-motion সেট করেছেন তাদের জন্য সব    */
+/*  অ্যানিমেশন/ট্রানজিশন প্রায় নিষ্ক্রিয় করা হয় (vestibular safety)। */
+/* ============================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* scroll-reveal এলিমেন্টগুলো লুকানো না থেকে সরাসরি দৃশ্যমান হয় */
+  .scroll-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
