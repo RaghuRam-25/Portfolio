@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiSave, FiUpload, FiX, FiPlus, FiGithub, FiLink, FiTag, FiImage, FiLoader } from 'react-icons/fi';
-import { projectsAPI } from '../../utils/api';
+import { projectsAPI, resolveMediaUrl } from '../../utils/api';
 
 export default function ProjectForm({ project, onClose, showToast, onSaveSuccess }) {
     const [formData, setFormData] = useState({
@@ -176,7 +176,7 @@ export default function ProjectForm({ project, onClose, showToast, onSaveSuccess
                     <input type="file" name="thumbnailFile" onChange={handleThumbnailChange} accept="image/*" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" />
                     {(thumbnailFile || (project && project.thumbnail)) && (
                         <div className="mt-3">
-                            <img src={thumbnailFile ? URL.createObjectURL(thumbnailFile) : project.thumbnail} alt="Thumbnail Preview" className="w-32 h-24 object-cover rounded-lg border border-neutral-700" />
+                            <img src={thumbnailFile ? URL.createObjectURL(thumbnailFile) : resolveMediaUrl(project.thumbnail)} alt="Thumbnail Preview" className="w-32 h-24 object-cover rounded-lg border border-neutral-700" />
                         </div>
                     )}
                 </div>
@@ -188,7 +188,7 @@ export default function ProjectForm({ project, onClose, showToast, onSaveSuccess
                     <div className="mt-3 flex flex-wrap gap-2">
                         {existingImages.map((url, index) => (
                             <div key={`existing-${index}`} className="relative">
-                                <img src={url} alt={`Existing ${index}`} className="w-24 h-20 object-cover rounded-lg border border-neutral-700" />
+                                <img src={resolveMediaUrl(url)} alt={`Existing ${index}`} className="w-24 h-20 object-cover rounded-lg border border-neutral-700" />
                                 <FiX className="absolute top-1 right-1 text-red-400 cursor-pointer bg-neutral-900 rounded-full p-0.5" onClick={() => removeExistingImage(url)} />
                             </div>
                         ))}

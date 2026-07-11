@@ -7,6 +7,7 @@ const BlogPost = require('../models/BlogPost');
 const SocialLink = require('../models/SocialLink');
 const makeCrudController = require('../controllers/crudController');
 const { getPageContent } = require('../controllers/pageContentController');
+const { getStats } = require('../utils/stats');
 
 const router = express.Router();
 
@@ -27,5 +28,14 @@ router.get('/blog-posts', blogs.list);
 router.get('/blog-posts/:id', blogs.getOne);
 router.get('/social-links', socialLinks.list);
 router.get('/pages/:key', getPageContent);
+router.get('/stats', async (_req, res) => {
+  try {
+    const stats = await getStats();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Error fetching public stats:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+});
 
 module.exports = router;

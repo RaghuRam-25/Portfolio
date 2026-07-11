@@ -9,36 +9,53 @@ const ChatWidget = ({ user }) => {
     const [inputText, setInputText] = useState('');
     const [socket, setSocket] = useState(null);
     const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
 
     useEffect(() => {
         if (!user?.isLoggedIn || !user?._id) return;
 
-        const newSocket = io(SOCKET_URL);
+        const newSocket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
         setSocket(newSocket);
 
         newSocket.emit('user:connect', user._id);
 
         newSocket.on('server:chat_history', (session) => {
-            setMessages(session.messages || []);
+            setMessages(Array.isArray(session.messages) ? session.messages : []);
         });
 
         newSocket.on('server:new_message', (newMessage) => {
-            setMessages(prev => [...prev, newMessage]);
+            setMessages(prev => {
+                const filtered = prev.filter(msg => !(msg.isOptimistic && msg.message === newMessage.message));
+                if (filtered.some(msg => msg._id && msg._id === newMessage._id)) return filtered;
+                return [...filtered, newMessage];
+            });
         });
 
         return () => {
             newSocket.disconnect();
         };
-    }, [user]);
+    }, [user?.isLoggedIn, user?._id]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    useEffect(() => {
+        if (isOpen) inputRef.current?.focus();
+    }, [isOpen]);
+
     const handleSendMessage = (e) => {
         e.preventDefault();
-        if (inputText.trim() && socket) {
-            socket.emit('user:send_message', { userId: user._id, message: inputText });
+        const message = inputText.trim();
+        if (message && socket) {
+            setMessages(prev => [...prev, {
+                _id: `local-${Date.now()}`,
+                message,
+                isOptimistic: true,
+                sender: { _id: user._id, name: user.name, avatarUrl: user.avatarUrl, role: user.role },
+                createdAt: new Date().toISOString(),
+            }]);
+            socket.emit('user:send_message', { userId: user._id, message });
             setInputText('');
         }
     };
@@ -46,17 +63,17 @@ const ChatWidget = ({ user }) => {
     if (!user?.isLoggedIn) return null;
 
     return (
-        <div className="fixed bottom-5 right-5 z-50">
+        <div className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-50">
             {isOpen && (
-                <div className="w-80 h-[450px] bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl flex flex-col border border-light-border dark:border-neutral-800 animate-fadeIn">
+                <div className="w-[calc(100vw-2rem)] max-w-sm h-[min(70vh,450px)] bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl flex flex-col border border-light-border dark:border-neutral-800 animate-fadeIn overflow-hidden">
                     <div className="p-4 border-b border-light-border dark:border-neutral-800 flex justify-between items-center">
                         <h3 className="font-bold text-sm">Live Chat Support</h3>
                         <button onClick={() => setIsOpen(false)} className="text-neutral-500 hover:text-light-textPrimary dark:hover:text-dark-textPrimary"><FiX /></button>
                     </div>
-                    <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-3">
+                    <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-3 scroll-smooth">
                         {messages.map((msg, index) => (
-                            <div key={index} className={`flex ${msg.sender._id === user._id ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] p-2.5 rounded-xl text-sm ${msg.sender._id === user._id ? 'bg-accent-blue text-white rounded-br-none' : 'bg-neutral-100 dark:bg-neutral-800 rounded-bl-none'}`}>
+                            <div key={msg._id || index} className={`flex ${(msg.sender?._id || msg.sender) === user._id ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[82%] p-2.5 rounded-xl text-sm break-words whitespace-pre-wrap ${(msg.sender?._id || msg.sender) === user._id ? 'bg-accent-blue text-white rounded-br-none' : 'bg-neutral-100 dark:bg-neutral-800 rounded-bl-none'} ${msg.isOptimistic ? 'opacity-80' : ''}`}>
                                     {msg.message}
                                 </div>
                             </div>
@@ -64,8 +81,8 @@ const ChatWidget = ({ user }) => {
                         <div ref={messagesEndRef} />
                     </div>
                     <form onSubmit={handleSendMessage} className="p-4 border-t border-light-border dark:border-neutral-800 flex items-center gap-2">
-                        <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Type a message..." className="flex-1 p-2 text-sm rounded-md bg-neutral-100 dark:bg-neutral-800 border border-light-border dark:border-neutral-700" />
-                        <button type="submit" className="p-2.5 bg-accent-blue text-white rounded-md"><FiSend /></button>
+                        <input ref={inputRef} type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Type a message..." className="min-w-0 flex-1 p-2 text-sm rounded-md bg-neutral-100 dark:bg-neutral-800 border border-light-border dark:border-neutral-700 outline-none focus:ring-1 focus:ring-accent-blue" />
+                        <button type="submit" disabled={!inputText.trim()} className="p-2.5 bg-accent-blue text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed"><FiSend /></button>
                     </form>
                 </div>
             )}

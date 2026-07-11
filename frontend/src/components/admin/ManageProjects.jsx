@@ -7,35 +7,6 @@ import { projectsAPI } from '../../utils/api';
 // এই কম্পোনেন্টটি ব্যবহারের জন্য আপনার প্রোজেক্টের api.js ফাইল থেকে projectAPI ইম্পোর্ট করতে হবে।
 // import { projectAPI } from '../../utils/api';
 
-// === ডেমো এর জন্য মক API ফাংশন (প্রোডাকশনে আসল API ব্যবহার করতে হবে) ===
-const mockApi = {
-    getProjects: async () => {
-        console.log("Fetching projects...");
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return {
-            success: true,
-            data: [
-                {
-                    _id: 'proj1', title: 'E-commerce Platform', description: 'Full-stack e-commerce solution.', category: 'Web Development',
-                    techStack: ['React', 'Node.js', 'MongoDB', 'Stripe'], githubUrl: '#', liveUrl: '#', isFeatured: true, order: 1,
-                    thumbnail: 'https://via.placeholder.com/150/FF5733/FFFFFF?text=E-commerce', images: []
-                },
-                {
-                    _id: 'proj2', title: 'Portfolio Website', description: 'Personal portfolio showcasing skills.', category: 'Web Design',
-                    techStack: ['React', 'Tailwind CSS'], githubUrl: '#', liveUrl: '#', isFeatured: false, order: 2,
-                    thumbnail: 'https://via.placeholder.com/150/33FF57/FFFFFF?text=Portfolio', images: []
-                },
-            ]
-        };
-    },
-    deleteProject: async (id) => {
-        console.log(`Deleting project ${id}`);
-        await new Promise(resolve => setTimeout(resolve, 800));
-        return { success: true, message: 'Project deleted successfully!' };
-    }
-};
-// ========================================================================
-
 export default function ManageProjects({ showToast }) {
     const [projects, setProjects] = useState([]);
     const [isLoading, setIsLoading] = useState(true);

@@ -125,12 +125,21 @@ router.patch('/:id/read', protect, adminOnly, async (req, res) => {
 });
 
 // ============================================================
-// DELETE /api/messages/:id — Message delete করা (Admin)
+// DELETE /api/messages/:id — Message delete করা (Admin/Owner)
 // ============================================================
-router.delete('/:id', protect, adminOnly, async (req, res) => {
+router.delete('/:id', protect, async (req, res) => {
   try {
-    const msg = await Message.findByIdAndDelete(req.params.id);
-    if (!msg) return res.status(404).json({ success: false, message: 'Message not found.' });
+    const msg = await Message.findById(req.params.id);
+    if (!msg) {
+      return res.status(404).json({ success: false, message: 'Message not found.' });
+    }
+
+    // Check if user is admin OR the message belongs to this user
+    if (req.user.role !== 'admin' && (!msg.userId || msg.userId.toString() !== req.user._id.toString())) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to delete this message.' });
+    }
+
+    await Message.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Message deleted successfully.' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { userAPI } from './api';
-import Spinner from '../components/ui/Spinner';
+import { userAPI } from '../../utils/api';
+import Spinner from '../ui/Spinner';
 import { FiUsers, FiStar } from 'react-icons/fi';
 
 const UserManager = ({ currentUser }) => {

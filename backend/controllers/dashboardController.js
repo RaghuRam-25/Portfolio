@@ -7,6 +7,7 @@ const Message = require('../models/Message');
 const BlogPost = require('../models/BlogPost');
 const asyncHandler = require('../utils/asyncHandler');
 const { ok } = require('../utils/responses');
+const { getStats, publishedProjectFilter } = require('../utils/stats');
 
 exports.getDashboard = asyncHandler(async (_req, res) => {
   const [
@@ -20,6 +21,7 @@ exports.getDashboard = asyncHandler(async (_req, res) => {
     unreadMessages,
     blogPosts,
     revenue,
+    liveStats,
   ] = await Promise.all([
     User.countDocuments({ deletedAt: null }),
     User.countDocuments({ deletedAt: null, isBlocked: true }),
@@ -27,13 +29,14 @@ exports.getDashboard = asyncHandler(async (_req, res) => {
     Category.countDocuments({ deletedAt: null }),
     Order.countDocuments({ deletedAt: null }),
     Order.countDocuments({ deletedAt: null, status: 'pending' }),
-    Project.countDocuments({}),
+    Project.countDocuments(publishedProjectFilter),
     Message.countDocuments({ isRead: false }),
     BlogPost.countDocuments({ deletedAt: null }),
     Order.aggregate([
       { $match: { deletedAt: null, paymentStatus: 'paid' } },
       { $group: { _id: null, total: { $sum: '$total' } } },
     ]),
+    getStats(),
   ]);
 
   ok(res, {
@@ -44,6 +47,8 @@ exports.getDashboard = asyncHandler(async (_req, res) => {
     orders,
     pendingOrders,
     projects,
+    experience: liveStats.experience,
+    deliveryRate: liveStats.deliveryRate,
     unreadMessages,
     blogPosts,
     revenue: revenue[0]?.total || 0,

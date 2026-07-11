@@ -45,7 +45,7 @@ export default function Layout({ children, activeTab, setActiveTab, user, setUse
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} setUser={setUser} profile={profile} />
 
       {/* মেইন এরিয়া যেখানে এখন নির্দিষ্ট পেজ অনুযায়ী মিনিমাম হাইট সেট থাকবে */}
-      <main className="flex-grow w-full max-w-7xl mx-auto px-6 py-12 flex flex-col justify-center">
+      <main className="flex-grow w-full min-w-0 max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col justify-center">
         {children}
       </main>
 

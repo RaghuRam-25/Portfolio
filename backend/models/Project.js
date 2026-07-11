@@ -19,6 +19,7 @@ const projectSchema = new mongoose.Schema({
   techStack: [{ type: String }], // Array of technologies used
   githubUrl: { type: String },
   liveUrl: { type: String },
+  isPublished: { type: Boolean, default: true },
   isFeatured: { type: Boolean, default: false },
   isDelivered: { type: Boolean, default: false }, // Delivered/Completed project কিনা
   order: { type: Number, default: 0 }, // For custom ordering in the frontend

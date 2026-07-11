@@ -38,6 +38,7 @@
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
 
   body {
@@ -45,6 +46,16 @@
     color: var(--color-light-textPrimary);
     transition: background-color 0.3s ease, color 0.3s ease;
     font-family: var(--font-sans);
+    min-width: 320px;
+    overflow-x: hidden;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  img, video, canvas, svg {
+    max-width: 100%;
   }
 
   body.dark {

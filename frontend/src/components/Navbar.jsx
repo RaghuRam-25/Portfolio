@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FiLogOut, FiUser, FiMessageSquare, FiSliders } from 'react-icons/fi';
+import { FiLogOut, FiMenu, FiMessageSquare, FiSliders, FiUser, FiX } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import { authAPI } from '../utils/api';
 
@@ -15,11 +15,11 @@ export default function Navbar({ activeTab, setActiveTab, user, setUser, profile
         setIsProfileOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dropdownRef]);
 
-  // Default navigation links if none are provided from the profile
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const defaultNavLinks = [
     { name: 'Home', id: 'home' },
     { name: 'Projects', id: 'projects' },
@@ -34,43 +34,90 @@ export default function Navbar({ activeTab, setActiveTab, user, setUser, profile
     { name: 'Contact', id: 'contact' },
   ];
 
-  // Use dynamic menu from profile if available, otherwise use default
   const allNavLinks = profile?.navigation?.navbarMenu?.length > 0
     ? profile.navigation.navbarMenu.map(item => ({ ...item, name: item.label }))
     : defaultNavLinks;
 
   const navLinks = allNavLinks.filter(link => {
-    if (link.requiresAuth && !user?.isLoggedIn) {
-      return false;
-    }
-    // 'home' is mapped to the 'hero' section key for visibility check
+    if (link.requiresAuth && !user?.isLoggedIn) return false;
     const sectionKey = link.id === 'home' ? 'hero' : link.id;
-
-    // Default to true (visible) if sectionVisibility is not defined or the key is not present
-    // This ensures that if a setting is missing, the section is shown by default.
     return profile?.sectionVisibility?.[sectionKey] ?? true;
   });
 
-  const handleNavClick = (id) => {
-    setActiveTab(id);
+  const closeMenus = () => {
     setIsOpen(false);
+    setIsProfileOpen(false);
   };
 
-  const handleLogout = () => {
-    authAPI.logout(); // localStorage থেকে token ও user data মুছে দেওয়া
-    if (setUser) setUser({ isLoggedIn: false, name: '', email: '', avatarUrl: '' });
-    setIsProfileOpen(false);
+  const handleNavClick = (id) => {
+    setActiveTab(id);
+    closeMenus();
+  };
+
+  const handleLogout = async () => {
+    await authAPI.logout();
+    if (setUser) {
+      setUser({ isLoggedIn: false, name: '', email: '', avatarUrl: '', role: '', _id: null });
+    }
+    closeMenus();
     setActiveTab('home');
   };
 
-  return (
-    <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/70 dark:bg-neutral-950/70 border-b border-light-border/30 dark:border-neutral-900 shadow-sm">
+  const handleAuthClick = () => {
+    setActiveTab('auth-portal');
+    closeMenus();
+  };
 
-      {/* ============================================= */}
-      {/* নতুন যোগ করা কাস্টম কীফ্রেম / অ্যানিমেশন CSS   */}
-      {/* ============================================= */}
+  const avatarUrl = user?.avatarUrl || profile?.avatarUrl || profile?.heroSection?.heroImageUrl || 'https://via.placeholder.com/80';
+
+  const accountActions = (mobile = false) => (
+    <div className={mobile ? 'mt-3 border-t border-light-border/40 dark:border-neutral-800 pt-3 space-y-2' : 'space-y-1'}>
+      {user?.isLoggedIn ? (
+        <>
+          {mobile && (
+            <div className="flex items-center gap-3 rounded-xl bg-neutral-100/80 dark:bg-neutral-900/80 px-3 py-2">
+              <img src={avatarUrl} alt={user.name || 'User'} className="h-9 w-9 rounded-full object-cover border border-neutral-200 dark:border-neutral-800" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-neutral-800 dark:text-neutral-100">{user.name || 'Account'}</p>
+                <p className="truncate text-xs text-neutral-500">{user.email}</p>
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => handleNavClick('my-messages')}
+            className={`${mobile ? 'text-sm py-2.5' : 'text-xs py-2'} w-full rounded-xl px-3 text-left font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 transition-colors`}
+          >
+            <FiMessageSquare /> My Messages
+          </button>
+          {user.role === 'admin' && (
+            <button
+              onClick={() => handleNavClick('admin')}
+              className={`${mobile ? 'text-sm py-2.5' : 'text-xs py-2'} w-full rounded-xl px-3 text-left font-bold text-primary hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 transition-colors`}
+            >
+              <FiSliders /> Admin Panel
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className={`${mobile ? 'text-sm py-2.5' : 'text-xs py-2'} w-full rounded-xl px-3 text-left font-bold text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 transition-colors`}
+          >
+            <FiLogOut /> Log Out
+          </button>
+        </>
+      ) : (
+        <button
+          onClick={handleAuthClick}
+          className={`${mobile ? 'justify-center bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 py-2.5 text-sm' : 'text-xs py-2 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800'} w-full rounded-xl px-3 font-bold flex items-center gap-2 transition-colors`}
+        >
+          <FiUser /> Log In
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <nav className="sticky top-0 z-50 w-full backdrop-blur-md bg-white/75 dark:bg-neutral-950/75 border-b border-light-border/30 dark:border-neutral-900 shadow-sm">
       <style>{`
-        /* লোগোর রিং - আগে দ্রুত ঘুরতো, এখন স্লো করা হলো */
         @keyframes spin-slow-logo {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -99,10 +146,6 @@ export default function Navbar({ activeTab, setActiveTab, user, setUser, profile
           animation: gradient-shimmer 5s ease infinite;
         }
 
-        @keyframes underline-grow {
-          from { transform: scaleX(0); }
-          to { transform: scaleX(1); }
-        }
         .nav-underline {
           content: '';
           position: absolute;
@@ -126,9 +169,9 @@ export default function Navbar({ activeTab, setActiveTab, user, setUser, profile
 
         @keyframes mobile-slide-down {
           from { opacity: 0; transform: translateY(-10px); max-height: 0; }
-          to { opacity: 1; transform: translateY(0); max-height: 500px; }
+          to { opacity: 1; transform: translateY(0); max-height: 80vh; }
         }
-        .animate-mobile-slide-down { animation: mobile-slide-down 0.35s ease-out forwards; overflow: hidden; }
+        .animate-mobile-slide-down { animation: mobile-slide-down 0.25s ease-out forwards; overflow: hidden; }
 
         @keyframes theme-icon-flip {
           0% { transform: rotate(0deg) scale(0.6); opacity: 0; }
@@ -150,131 +193,104 @@ export default function Navbar({ activeTab, setActiveTab, user, setUser, profile
         .animate-stagger-fade-in { animation: stagger-fade-in 0.3s ease-out both; }
       `}</style>
 
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-
-        {/* লোগো সেকশন */}
-        <button onClick={() => setActiveTab('home')} className="flex items-center gap-3 cursor-pointer group">
-          <div className="relative w-10 h-10 flex items-center justify-center">
-            {/* নতুন: লোগোর পেছনে হালকা glow pulse */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <button onClick={() => handleNavClick('home')} className="min-w-0 flex items-center gap-3 cursor-pointer group">
+          <div className="relative w-10 h-10 flex-shrink-0 flex items-center justify-center">
             <div className="absolute -inset-1 rounded-full bg-primary/40 blur-md animate-logo-glow-pulse" />
-
-            {/* আগে animate-spin (দ্রুত) ছিল, এখন animate-spin-slow-logo দিয়ে স্লো করা হলো */}
-            <div className="absolute inset-0 border-2 border-t-transparent border-primary rounded-full animate-spin-slow-logo"></div>
-            {/* নতুন: দ্বিতীয় একটা কাউন্টার-রোটেটিং ড্যাশড রিং যোগ হলো */}
-            <div className="absolute -inset-1 border border-dashed border-primary/40 rounded-full animate-spin-slow-logo-reverse"></div>
-
+            <div className="absolute inset-0 border-2 border-t-transparent border-primary rounded-full animate-spin-slow-logo" />
+            <div className="absolute -inset-1 border border-dashed border-primary/40 rounded-full animate-spin-slow-logo-reverse" />
             <img
               src={profile?.heroSection?.heroImageUrl || profile?.avatarUrl || 'https://via.placeholder.com/400'}
               alt="Profile"
               className="relative w-7 h-7 rounded-full object-cover"
             />
           </div>
-          {/* নতুন: নামের টেক্সটে অ্যানিমেটেড গ্রেডিয়েন্ট শিমার */}
           <span
-            className="text-2xl font-normal tracking-wide bg-gradient-to-r from-light-textPrimary dark:from-white via-primary to-light-textPrimary dark:to-white bg-clip-text text-transparent animate-gradient-shimmer"
+            className="truncate max-w-[11rem] sm:max-w-xs text-xl sm:text-2xl font-normal tracking-wide bg-gradient-to-r from-light-textPrimary dark:from-white via-primary to-light-textPrimary dark:to-white bg-clip-text text-transparent animate-gradient-shimmer"
             style={{ fontFamily: "'Palace Script MT', cursive" }}
           >
             {profile?.name || 'Portfolio'}
           </span>
         </button>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden lg:flex items-center gap-5">
           {navLinks.map((link) => (
             <button
               key={link.id}
               onClick={() => handleNavClick(link.id)}
-              // নতুন: nav-link-wrap ক্লাস + relative পজিশন, hover-এ স্কেল
               className={`relative nav-link-wrap text-sm font-semibold transition-all hover:scale-105 ${activeTab === link.id ? 'text-primary' : 'text-neutral-600 dark:text-neutral-300'}`}
             >
               {link.name}
-              {/* নতুন: হোভার/অ্যাকটিভ হলে আন্ডারলাইন এনিমেট হয়ে grow করবে */}
               <span className={`nav-underline ${activeTab === link.id ? 'nav-underline-active' : ''}`} />
             </button>
           ))}
 
-          {/* নতুন: থিম টগল বাটনে হোভার গ্লো + আইকন পরিবর্তনে ফ্লিপ অ্যানিমেশন */}
           <button
             onClick={toggleTheme}
             className="relative p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-primary hover:shadow-[0_0_12px] hover:shadow-primary/30 transition-all"
+            aria-label="Toggle theme"
           >
             <span key={theme} className="inline-block animate-theme-icon-flip">
               {theme === 'light' ? '🌙' : '☀️'}
             </span>
           </button>
 
-          {/* ইউজার সার্কেল বাটন */}
           <div className="relative" ref={dropdownRef}>
             <button
-              onClick={() => user?.isLoggedIn ? setIsProfileOpen(!isProfileOpen) : setActiveTab('auth-portal')}
-              // নতুন: hover-এ ring pulse effect
+              onClick={() => user?.isLoggedIn ? setIsProfileOpen(!isProfileOpen) : handleAuthClick()}
               className="w-10 h-10 rounded-full overflow-hidden border-2 border-neutral-200 dark:border-neutral-800 hover:scale-105 hover:border-primary transition-transform flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 animate-avatar-ring-pulse"
+              aria-label={user?.isLoggedIn ? 'Open account menu' : 'Log in'}
+              aria-expanded={isProfileOpen}
             >
               {user?.isLoggedIn ? (
-                <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <FiUser className="text-neutral-500" />
               )}
             </button>
 
-            {/* ড্রপডাউন মেনু */}
             {isProfileOpen && user?.isLoggedIn && (
-              // নতুন: pop-in entrance animation যোগ হলো
-              <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-white dark:bg-neutral-900 p-2 shadow-xl border border-neutral-100 dark:border-neutral-800 origin-top-right animate-dropdown-pop">
-                <div className="px-3 py-2 text-xs font-bold text-neutral-500 border-b border-neutral-100 dark:border-neutral-800 mb-1">
-                  {user.name}
+              <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white dark:bg-neutral-900 p-2 shadow-xl border border-neutral-100 dark:border-neutral-800 origin-top-right animate-dropdown-pop">
+                <div className="px-3 py-2 text-xs font-bold text-neutral-500 border-b border-neutral-100 dark:border-neutral-800 mb-1 truncate">
+                  {user.name || 'Account'}
                 </div>
-                <button
-                  onClick={() => { setActiveTab('my-messages'); setIsProfileOpen(false); }}
-                  className="w-full px-3 py-2 text-left text-xs font-bold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl flex items-center gap-2 transition-colors"
-                >
-                  <FiMessageSquare /> My Messages
-                </button>
-                {user.role === 'admin' && (
-                  <button
-                    onClick={() => { setActiveTab('admin'); setIsProfileOpen(false); }}
-                    className="w-full px-3 py-2 text-left text-xs font-bold text-primary dark:text-primary hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl flex items-center gap-2 transition-colors mb-1"
-                  >
-                    <FiSliders /> Admin Panel
-                  </button>
-                )}
-                <button
-                  onClick={handleLogout}
-                  className="w-full px-3 py-2 text-left text-xs font-bold text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl flex items-center gap-2 transition-colors"
-                >
-                  <FiLogOut /> Log Out
-                </button>
+                {accountActions(false)}
               </div>
             )}
           </div>
         </div>
-      </div>
 
-      <div className="md:hidden border-t border-light-border/30 dark:border-neutral-800 bg-white/90 dark:bg-neutral-950/90">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          <button onClick={() => setIsOpen(!isOpen)} className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-            {isOpen ? 'Close' : 'Menu'}
-          </button>
-          <button onClick={toggleTheme} className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-primary transition-colors">
+        <div className="lg:hidden flex items-center gap-2">
+          <button onClick={toggleTheme} className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:border-primary transition-colors" aria-label="Toggle theme">
             <span key={theme} className="inline-block animate-theme-icon-flip">
               {theme === 'light' ? '🌙' : '☀️'}
             </span>
           </button>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-700 dark:text-neutral-200"
+            aria-label={isOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isOpen}
+          >
+            {isOpen ? <FiX /> : <FiMenu />}
+          </button>
         </div>
+      </div>
 
+      <div className="lg:hidden border-t border-light-border/30 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95">
         {isOpen && (
-          // নতুন: মোবাইল মেনু slide-down animation দিয়ে খুলবে
-          <div className="max-w-7xl mx-auto px-6 pb-4 space-y-2 animate-mobile-slide-down">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 space-y-1 animate-mobile-slide-down overflow-y-auto">
             {navLinks.map((link, index) => (
               <button
                 key={link.id}
                 onClick={() => handleNavClick(link.id)}
-                className={`block w-full text-left text-sm font-semibold py-2 animate-stagger-fade-in ${activeTab === link.id ? 'text-primary' : 'text-neutral-700 dark:text-neutral-200'}`}
-                style={{ animationDelay: `${index * 60}ms` }}
+                className={`block w-full text-left text-sm font-semibold px-3 py-2.5 rounded-xl animate-stagger-fade-in ${activeTab === link.id ? 'text-primary bg-primary/10' : 'text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-900'}`}
+                style={{ animationDelay: `${index * 40}ms` }}
               >
                 {link.name}
               </button>
             ))}
+            {accountActions(true)}
           </div>
         )}
       </div>

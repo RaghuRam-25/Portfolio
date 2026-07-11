@@ -5,14 +5,18 @@ const Message = require('../models/Message');
 const User = require('../models/User'); // Profile মডেলের পরিবর্তে User মডেল
 const ChatSession = require('../models/ChatSession');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
+const { getStats, publishedProjectFilter } = require('../utils/stats');
 
 // GET /api/summary - Get dashboard summary stats
 router.get('/', protect, adminOnly, async (req, res) => {
     try {
-        const projectCount = await Project.countDocuments();
-        const userCount = await User.countDocuments();
-        const paymentConfirmationCount = await Message.countDocuments({ isPaymentConfirmation: true });
-        const activeChatCount = await ChatSession.countDocuments({ isArchived: false });
+        const [projectCount, userCount, paymentConfirmationCount, activeChatCount, stats] = await Promise.all([
+            Project.countDocuments(publishedProjectFilter),
+            User.countDocuments(),
+            Message.countDocuments({ isPaymentConfirmation: true }),
+            ChatSession.countDocuments({ isArchived: false }),
+            getStats(),
+        ]);
 
         // পোর্টফোলিও প্রোফাইল থেকে ভিডিও সংখ্যা নেওয়া হচ্ছে (শুধুমাত্র ভেরিফাইড ইউজার)
         const adminProfile = await User.findOne({ isPortfolioProfile: true, isVerified: true });
@@ -26,6 +30,8 @@ router.get('/', protect, adminOnly, async (req, res) => {
                 users: userCount,
                 paymentConfirmations: paymentConfirmationCount,
                 activeChats: activeChatCount,
+                experience: stats.experience,
+                deliveryRate: stats.deliveryRate,
             },
         });
     } catch (error) {

@@ -145,6 +145,7 @@ const userSchema = new mongoose.Schema({
     blockedAt: { type: Date, default: null },
     deletedAt: { type: Date, default: null },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    accountCreatedAt: { type: Date, default: null },
     careerStartDate: { type: Date, default: null },
     socials: {
         facebook: { type: String, default: '' },

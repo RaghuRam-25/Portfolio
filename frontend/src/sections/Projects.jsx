@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiGithub, FiExternalLink, FiLoader, FiInfo, FiLayers } from 'react-icons/fi';
-import { projectsAPI, SOCKET_URL } from '../utils/api';
+import { projectsAPI, resolveMediaUrl } from '../utils/api';
 
 export default function Projects({ profile }) {
   const [projects, setProjects] = useState([]);
@@ -73,7 +73,7 @@ export default function Projects({ profile }) {
               >
                 <div className="relative h-48 overflow-hidden">
                   <img
-                    src={project.thumbnail ? `${SOCKET_URL}/${project.thumbnail.replace(/\\/g, '/')}` : 'https://via.placeholder.com/400x250/1a1a1a/4a4a4a?text=No+Image'}
+                    src={resolveMediaUrl(project.thumbnail, 'https://via.placeholder.com/400x250/1a1a1a/4a4a4a?text=No+Image')}
                     alt={project.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />

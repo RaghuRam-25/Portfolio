@@ -1,40 +1,147 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FiCpu, FiActivity, FiLayers, FiGithub, FiLinkedin, FiLoader, FiAlertCircle } from 'react-icons/fi';
+import { FiCpu, FiActivity, FiLayers, FiGithub, FiLinkedin, FiLoader } from 'react-icons/fi';
 import { FaWhatsapp, FaFacebook } from 'react-icons/fa';
 // skillAPI, projectsAPI, এবং socialLinkAPI ইম্পোর্ট করা হচ্ছে
-import { skillAPI, projectsAPI, socialLinkAPI } from '../utils/api';
+import { skillAPI, projectsAPI, socialLinkAPI, profileAPI } from '../utils/api';
+import { sanitizeProfile } from '../utils/profileSanitizer';
+const categorizeTech = (techName) => {
+  const name = techName.toLowerCase().trim();
+  
+  const frontendKeywords = [
+    'react', 'vue', 'angular', 'next', 'nuxt', 'svelte', 'html', 'css', 
+    'tailwind', 'bootstrap', 'javascript', 'js', 'typescript', 'ts', 
+    'sass', 'less', 'redux', 'zustand', 'styled', 'vite', 'webpack', 
+    'flutter', 'native', 'android', 'ios', 'expo', 'ui', 'material',
+    'jquery', 'ember', 'backbone'
+  ];
+  
+  const backendKeywords = [
+    'node', 'express', 'nest', 'django', 'flask', 'fastapi', 'spring', 
+    'laravel', 'php', 'ruby', 'rails', 'go', 'golang', 'java', 'python', 
+    'c#', 'asp', 'dotnet', 'rest', 'graphql', 'apollo', 'microservice', 
+    'socket', 'websocket', 'koa', 'hapi', 'fastify'
+  ];
+  
+  const databaseKeywords = [
+    'mongo', 'mongoose', 'sql', 'postgres', 'mysql', 'sqlite', 'redis', 
+    'firebase', 'cassandra', 'dynamodb', 'oracle', 'mariadb', 'prisma', 
+    'sequelize', 'supabase', 'cockroach', 'neo4j'
+  ];
 
-export default function About({ profile }) {
+  const devopsKeywords = [
+    'docker', 'kubernetes', 'k8s', 'aws', 'azure', 'gcp', 'cloud',
+    'jenkins', 'ci/cd', 'ci', 'cd', 'terraform', 'ansible', 'nginx',
+    'apache', 'linux', 'ubuntu', 'devops', 'heroku', 'vercel', 'netlify',
+    'render', 'digitalocean', 'linode', 'cloudflare', 'github actions',
+    'gitlab', 'circleci'
+  ];
+
+  if (frontendKeywords.some(kw => name.includes(kw))) {
+    return 'frontend';
+  }
+  if (backendKeywords.some(kw => name.includes(kw))) {
+    return 'backend';
+  }
+  if (databaseKeywords.some(kw => name.includes(kw))) {
+    return 'database';
+  }
+  if (devopsKeywords.some(kw => name.includes(kw))) {
+    return 'devops';
+  }
+  return 'tools';
+};
+
+const calculateExperience = (startDateStr) => {
+  if (!startDateStr) return "0 Days";
+  
+  const start = new Date(startDateStr);
+  const now = new Date();
+  
+  if (start > now) return "0 Days";
+  
+  const diffTime = now.getTime() - start.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  let years = now.getFullYear() - start.getFullYear();
+  let months = now.getMonth() - start.getMonth();
+  const days = now.getDate() - start.getDate();
+  
+  if (days < 0) {
+    months--;
+  }
+  
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+  
+  if (years === 0 && months === 0) {
+    const d = diffDays;
+    return `${d} ${d === 1 ? 'Day' : 'Days'}`;
+  }
+  
+  if (years === 0) {
+    return `${months} ${months === 1 ? 'Month' : 'Months'}`;
+  }
+  
+  let expStr = `${years} ${years === 1 ? 'Year' : 'Years'}`;
+  if (months > 0) {
+    expStr += ` ${months} ${months === 1 ? 'Month' : 'Months'}`;
+  }
+  return expStr;
+};
+
+export default function About({ profile: initialProfile }) {
+  const [latestProfile, setLatestProfile] = useState(null);
+  const profile = latestProfile || initialProfile || {};
   const aboutSection = profile?.aboutSection || {};
 
-  // নতুন: প্রজেক্টের সংখ্যা ও ডেলিভারি রেট গণনার জন্য স্টেট
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchLatestAboutProfile = async () => {
+      try {
+        const response = await profileAPI.getPublicProfile();
+        if (isMounted && response.success) {
+          setLatestProfile(sanitizeProfile(response.data));
+        }
+      } catch {
+        if (isMounted) {
+          setLatestProfile(null);
+        }
+      }
+    };
+
+    fetchLatestAboutProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const [projects, setProjects] = useState([]);
   const [projectCount, setProjectCount] = useState(0);
   const [deliveryRate, setDeliveryRate] = useState(100);
-  const [yearsExp, setYearsExp] = useState(0);
   const [contributionData, setContributionData] = useState([]);
-  const [isLoadingContributions, setIsLoadingContributions] = useState(true);
+  const [, setIsLoadingContributions] = useState(true);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [socials, setSocials] = useState([]);
 
-  // নতুন: ক্যারিয়ার শুরুর তারিখ থেকে অভিজ্ঞতার বছর গণনা
-  useEffect(() => {
-    if (profile?.careerStartDate) {
-      const startDate = new Date(profile.careerStartDate);
-      const today = new Date();
-      let years = today.getFullYear() - startDate.getFullYear();
-      const m = today.getMonth() - startDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < startDate.getDate())) years--;
-      setYearsExp(years > 0 ? years : 0);
-    }
+  // Calculate experience dynamically from careerStartDate
+  const experienceText = useMemo(() => {
+    return calculateExperience(profile?.careerStartDate);
   }, [profile?.careerStartDate]);
 
   // প্রজেক্টগুলো লোড করে সংখ্যা ও ডেলিভারি রেট গণনা করা
   useEffect(() => {
     const fetchProjectData = async () => {
+      setIsLoadingProjects(true);
       try {
         const response = await projectsAPI.getAll();
         if (response.success) {
           const allProjects = response.data || [];
+          setProjects(allProjects);
           setProjectCount(allProjects.length);
           if (allProjects.length > 0) {
             const deliveredCount = allProjects.filter(p => p.isDelivered).length;
@@ -47,6 +154,7 @@ export default function About({ profile }) {
       } catch (error) {
         console.error("Failed to fetch projects for count & delivery rate:", error);
       }
+      setIsLoadingProjects(false);
     };
     fetchProjectData();
   }, []);
@@ -61,9 +169,9 @@ export default function About({ profile }) {
     if (stat.label && stat.label.toLowerCase().includes('project')) {
       return { ...stat, value: `${projectCount}+` };
     }
-    // "Years Exp" লেবেলযুক্ত স্ট্যাটটি খুঁজে তার মান ডাইনামিকভাবে আপডেট করা হচ্ছে
-    if (stat.label && stat.label.toLowerCase().includes('year')) {
-      return { ...stat, value: `${yearsExp}+` };
+    // "Years Exp" (or label containing year/exp)
+    if (stat.label && (stat.label.toLowerCase().includes('year') || stat.label.toLowerCase().includes('exp'))) {
+      return { ...stat, label: "Experience", value: experienceText };
     }
     // "Delivery" লেবেলযুক্ত স্ট্যাটটি খুঁজে তার মান ডাইনামিকভাবে আপডেট করা হচ্ছে
     if (stat.label && stat.label.toLowerCase().includes('delivery')) {
@@ -120,67 +228,198 @@ export default function About({ profile }) {
 
   const [activeFilter, setActiveFilter] = useState('all');
 
-  const filteredSkills = skills.filter(skill => {
-    if (activeFilter === 'all') return true;
-    return skill.category === activeFilter;
-  });
-
   // ৪. ডাইনামিক গিটহাব অ্যাক্টিভিটি গ্রাফ
   useEffect(() => {
-    const fetchContributions = async () => {
-      setIsLoadingContributions(true);
-      const githubUrl = profile?.socials?.github;
-      if (!githubUrl) {
-        setContributionData(Array.from({ length: 24 * 7 }, () => 0));
-        setIsLoadingContributions(false);
-        return;
+    if (isLoadingProjects) return; // Wait for projects to be loaded
+    setIsLoadingContributions(true);
+
+    if (!projects || projects.length === 0) {
+      setContributionData(Array.from({ length: 24 * 7 }, () => 0));
+      setIsLoadingContributions(false);
+      return;
+    }
+
+    const contributionsByDate = new Map();
+    projects.forEach(project => {
+      if (project.createdAt) {
+        const date = new Date(project.createdAt).toISOString().split('T')[0];
+        contributionsByDate.set(date, (contributionsByDate.get(date) || 0) + 1);
       }
+    });
 
-      let username;
-      try {
-        const url = new URL(githubUrl);
-        username = url.pathname.split('/').filter(Boolean)[0];
-      } catch (e) {
-        username = githubUrl.split('/').filter(Boolean).pop();
-      }
+    const maxProjectsInDay = Math.max(...contributionsByDate.values(), 1);
+    const levelScale = 4 / maxProjectsInDay;
 
-      if (!username) {
-        setContributionData(Array.from({ length: 24 * 7 }, () => 0));
-        setIsLoadingContributions(false);
-        return;
-      }
+    const totalDays = 24 * 7;
+    const today = new Date();
+    const startDate = new Date();
+    startDate.setDate(today.getDate() - (totalDays - 1));
+    const startDayOfWeek = startDate.getDay();
+    startDate.setDate(startDate.getDate() - startDayOfWeek);
 
-      try {
-        const res = await fetch(`https://github-contributions-api.jogruber.de/v4/${username}?y=all`);
-        if (!res.ok) throw new Error('Contribution data not found');
-        const data = await res.json();
+    const matrix = Array.from({ length: totalDays }).map((_, i) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      const dateString = date.toISOString().split('T')[0];
+      const projectCountOnDate = contributionsByDate.get(dateString) || 0;
+      if (projectCountOnDate === 0) return 0;
+      return Math.max(1, Math.ceil(projectCountOnDate * levelScale));
+    });
 
-        const contributionsByDate = new Map(data.contributions.map(c => [c.date, c.level]));
-        const totalDays = 24 * 7;
+    setContributionData(matrix);
+    setIsLoadingContributions(false);
+  }, [projects, isLoadingProjects]);
 
-        const today = new Date();
-        const startDate = new Date();
-        startDate.setDate(today.getDate() - (totalDays - 1));
-        const startDayOfWeek = startDate.getDay();
-        startDate.setDate(startDate.getDate() - startDayOfWeek);
+  const projectCategoriesContent = useMemo(() => {
+    if (!projects || projects.length === 0) return null;
+    const projectCategories = Array.from(new Set(projects.map(p => p.category).filter(Boolean)));
+    if (projectCategories.length === 0) return null;
 
-        const matrix = Array.from({ length: totalDays }).map((_, i) => {
-          const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
-          const dateString = date.toISOString().split('T')[0];
-          return contributionsByDate.get(dateString) || 0;
+    return (
+      <div className="pt-6">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-3">Project Categories</h4>
+        <div className="flex flex-wrap gap-2">
+          {projectCategories.map(cat => (
+            <span key={cat} className="text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 px-3 py-1.5 rounded-full">
+              {cat}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }, [projects]);
+
+  const recentProjectContent = useMemo(() => {
+    if (!projects || projects.length === 0) return null;
+    const recentProject = [...projects].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    return (
+      <div className="mt-4 pt-3 border-t border-dashed border-neutral-800 text-center">
+        <p className="text-[10px] uppercase tracking-wider text-neutral-500">Most Recent</p>
+        <p className="text-sm font-bold text-light-textPrimary dark:text-white truncate mt-0.5">{recentProject.title}</p>
+      </div>
+    );
+  }, [projects]);
+
+  const skillMatrixContent = useMemo(() => {
+    if (isLoadingSkills || isLoadingProjects) {
+      return (
+        <div className="text-center col-span-full py-10">
+          <FiLoader className="animate-spin text-accent-purple text-4xl mx-auto" />
+          <p className="text-sm text-neutral-400 mt-2">Loading Skills Matrix...</p>
+        </div>
+      );
+    }
+
+    if (!projects || projects.length === 0) {
+      return (
+        <div className="text-center col-span-full py-10 bg-neutral-50 dark:bg-neutral-900/40 rounded-2xl border border-light-border/40 dark:border-neutral-800/60">
+          <FiLayers className="mx-auto text-4xl text-neutral-400 mb-3" />
+          <h4 className="font-bold text-light-textPrimary dark:text-dark-textPrimary">No Technologies to Display</h4>
+          <p className="text-sm text-light-textSecondary dark:text-neutral-400 mt-1">Add projects with technologies to see them here.</p>
+        </div>
+      );
+    }
+
+    const techMap = new Map();
+
+    projects.forEach(p => {
+      if (p.techStack && Array.isArray(p.techStack)) {
+        p.techStack.forEach(tech => {
+          const trimmed = tech.trim();
+          if (!trimmed) return;
+          const key = trimmed.toLowerCase();
+          const projectDate = p.createdAt ? new Date(p.createdAt) : new Date();
+
+          if (techMap.has(key)) {
+            const entry = techMap.get(key);
+            entry.count += 1;
+            if (projectDate < entry.oldestDate) {
+              entry.oldestDate = projectDate;
+            }
+          } else {
+            techMap.set(key, {
+              originalName: trimmed,
+              oldestDate: projectDate,
+              count: 1
+            });
+          }
         });
-        setContributionData(matrix);
-      } catch (error) {
-        console.error("Failed to fetch GitHub contributions:", error);
-        setContributionData(Array.from({ length: 24 * 7 }, () => 0));
-      } finally {
-        setIsLoadingContributions(false);
       }
-    };
+    });
 
-    fetchContributions();
-  }, [profile?.socials?.github]);
+    const dynamicSkills = [];
+    const dbSkillsMap = new Map(skills.map(s => [s.name.toLowerCase().trim(), s]));
+
+    techMap.forEach((info, key) => {
+      const dbSkill = dbSkillsMap.get(key);
+      const category = dbSkill?.category || categorizeTech(info.originalName);
+      const experienceLabel = calculateExperience(info.oldestDate.toISOString());
+      const descriptionTemplates = {
+        frontend: `Expertise in building responsive and interactive user interfaces using ${info.originalName}.`,
+        backend: `Robust server-side development, API design, and system integration using ${info.originalName}.`,
+        database: `Data persistence, indexing, optimization, and query management with ${info.originalName}.`,
+        devops: `Infrastructure automation, CI/CD pipelines, and cloud deployment using ${info.originalName}.`,
+        tools: `Streamlining development workflows, tooling, and productivity using ${info.originalName}.`,
+      };
+      const description = descriptionTemplates[category] || descriptionTemplates.tools;
+      const level = Math.min(95, 65 + (info.count * 10));
+
+      dynamicSkills.push({
+        name: dbSkill?.name || info.originalName,
+        experienceLabel,
+        description: dbSkill?.description || description,
+        level: dbSkill?.level || level,
+        category
+      });
+    });
+
+    const filteredSkills = dynamicSkills.filter(skill => {
+      if (activeFilter === 'all') return true;
+      return skill.category === activeFilter;
+    });
+
+    if (filteredSkills.length === 0) {
+      return (
+        <div className="text-center col-span-full py-10 bg-neutral-50 dark:bg-neutral-900/40 rounded-2xl border border-light-border/40 dark:border-neutral-800/60">
+          <FiLayers className="mx-auto text-4xl text-neutral-400 mb-3" />
+          <h4 className="font-bold text-light-textPrimary dark:text-dark-textPrimary">No Technologies to Display</h4>
+          <p className="text-sm text-light-textSecondary dark:text-neutral-400 mt-1">No matching technologies found in this category.</p>
+        </div>
+      );
+    }
+
+    return filteredSkills.map((skill, index) => (
+      <div
+        key={index}
+        className="p-5 sm:p-6 rounded-2xl border border-light-border dark:border-neutral-800 bg-white dark:bg-neutral-900/40 flex flex-col justify-between transition-all hover:border-secondary/30 dark:hover:border-accent/30 group hover:-translate-y-1 duration-300 min-w-0"
+      >
+        <div>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
+            <h4 className="font-bold text-sm md:text-base text-light-textPrimary dark:text-dark-textPrimary group-hover:text-secondary dark:group-hover:text-accent transition-colors break-words">{skill.name}</h4>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-secondary dark:text-accent bg-secondary/10 dark:bg-accent/10 px-2 py-0.5 rounded border border-secondary/10 dark:border-accent/10 flex-shrink-0 self-start">
+              {skill.experienceLabel}
+            </span>
+          </div>
+          <p className="text-xs md:text-sm text-light-textSecondary dark:text-neutral-400 leading-relaxed mb-6 font-normal break-words">
+            {skill.description}
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-[10px] font-bold tracking-wider uppercase">
+            <span className="text-light-textSecondary dark:text-neutral-500">Proficiency</span>
+            <span className="text-light-textPrimary dark:text-neutral-300">{skill.level}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-secondary to-accent rounded-full transition-all duration-500"
+              style={{ width: `${skill.level}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    ));
+  }, [activeFilter, isLoadingProjects, isLoadingSkills, projects, skills]);
 
   return (
     // 💡 ম্যাজিক এখানে: pt-20 এর জায়গায় pt-2 করা হয়েছে যাতে ওই ফাঁকা গ্যাপটা সম্পূর্ণ চলে যায়
@@ -228,6 +467,9 @@ export default function About({ profile }) {
               ))}
             </div>
 
+            {/* Project Categories */}
+            {projectCategoriesContent}
+
             {/* নতুন: সোশ্যাল মিডিয়া কানেক্ট সেকশন */}
             <div className="mt-8 pt-6 border-t border-light-border/50 dark:border-neutral-800">
               <h3 className="text-sm font-bold uppercase tracking-wider text-light-textSecondary dark:text-neutral-400 mb-4">Connect with me</h3>
@@ -256,11 +498,11 @@ export default function About({ profile }) {
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-light-textPrimary dark:text-dark-textPrimary inline-flex items-center gap-1.5">
-                  <FiActivity /> Live Engine Pulse
+                  <FiActivity /> Project Creation Pulse
                 </h3>
               </div>
               <span className="text-[10px] font-bold uppercase tracking-widest bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded text-light-textSecondary dark:text-neutral-400">
-                Active Matrix
+                Project Activity
               </span>
             </div>
 
@@ -268,16 +510,16 @@ export default function About({ profile }) {
             <div className="grid grid-flow-col grid-rows-7 gap-1 overflow-x-auto pb-2 custom-scrollbar">
               {contributionData.map((level, idx) => {
                 let colorClass = 'bg-neutral-100 dark:bg-neutral-800/80';
-                if (level === 1) colorClass = 'bg-emerald-200 dark:bg-emerald-950/60';
-                if (level === 2) colorClass = 'bg-emerald-400 dark:bg-emerald-800/70';
-                if (level === 3) colorClass = 'bg-emerald-600 dark:bg-emerald-600/80';
-                if (level === 4) colorClass = 'bg-emerald-700 dark:bg-emerald-400';
+                if (level === 1) colorClass = 'bg-emerald-200 dark:bg-emerald-900/60';
+                if (level === 2) colorClass = 'bg-emerald-400 dark:bg-emerald-800/80';
+                if (level === 3) colorClass = 'bg-emerald-600 dark:bg-emerald-600';
+                if (level === 4) colorClass = 'bg-emerald-800 dark:bg-emerald-400';
 
                 return (
                   <div
                     key={idx}
-                    className={`w-2.5 h-2.5 rounded-sm transition-all duration-300 hover:scale-125 ${colorClass}`}
-                    title={`Activity Index: ${level}`}
+                    className={`w-2.5 h-2.5 rounded-sm transition-colors duration-300 ${colorClass}`}
+                    title={`Level ${level} activity`}
                   />
                 );
               })}
@@ -287,13 +529,15 @@ export default function About({ profile }) {
               <span>Less</span>
               <div className="flex gap-1">
                 <div className="w-2 h-2 rounded-sm bg-neutral-100 dark:bg-neutral-800/80"></div>
-                <div className="w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-950/60"></div>
-                <div className="w-2 h-2 rounded-sm bg-emerald-400 dark:bg-emerald-800/70"></div>
-                <div className="w-2 h-2 rounded-sm bg-emerald-600 dark:bg-emerald-600/80"></div>
-                <div className="w-2 h-2 rounded-sm bg-emerald-700 dark:bg-emerald-400"></div>
+                <div className="w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-900/60"></div>
+                <div className="w-2 h-2 rounded-sm bg-emerald-400 dark:bg-emerald-800/80"></div>
+                <div className="w-2 h-2 rounded-sm bg-emerald-600 dark:bg-emerald-600"></div>
+                <div className="w-2 h-2 rounded-sm bg-emerald-800 dark:bg-emerald-400"></div>
               </div>
               <span>More</span>
             </div>
+
+            {recentProjectContent}
           </div>
         </div>
 
@@ -312,7 +556,7 @@ export default function About({ profile }) {
 
               {/* ফিল্টার বাটনস */}
               <div className="flex flex-wrap gap-2">
-                {['all', 'frontend', 'backend', 'database', 'devops'].map((filter) => (
+                {['all', 'frontend', 'backend', 'database', 'devops', 'tools'].map((filter) => (
                   <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}
@@ -321,54 +565,15 @@ export default function About({ profile }) {
                       : 'border-light-border dark:border-neutral-800 bg-white dark:bg-neutral-900/40 text-light-textSecondary dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-light-textPrimary dark:hover:text-white'
                       }`}
                   >
-                    {filter}
+                    {filter === 'tools' ? 'Others' : filter}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* স্কিল কার্ডস গ্রিড */}
-            {isLoadingSkills ? (
-              <div className="text-center col-span-full py-10">
-                <FiLoader className="animate-spin text-accent-purple text-4xl mx-auto" />
-                <p className="text-sm text-neutral-400 mt-2">Loading Skills...</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredSkills.map((skill, index) => (
-                  <div
-                    key={index}
-                    className="p-6 rounded-2xl border border-light-border dark:border-neutral-800 bg-white dark:bg-neutral-900/40 flex flex-col justify-between transition-all hover:border-secondary/30 dark:hover:border-accent/30 group hover:-translate-y-1 duration-300"
-                  >
-                    <div>
-                      <div className="flex justify-between items-start mb-3">
-                        <h4 className="font-bold text-sm md:text-base text-light-textPrimary dark:text-dark-textPrimary group-hover:text-secondary dark:group-hover:text-accent transition-colors">{skill.name}</h4>
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-secondary dark:text-accent bg-secondary/10 dark:bg-accent/10 px-2 py-0.5 rounded border border-secondary/10 dark:border-accent/10">
-                          {skill.years} Yrs Exp
-                        </span>
-                      </div>
-                      <p className="text-xs md:text-sm text-light-textSecondary dark:text-neutral-400 leading-relaxed mb-6 font-normal">
-                        {skill.description}
-                      </p>
-                    </div>
-
-                    {/* ডায়নামিক প্রোগ্রেস বার */}
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-[10px] font-bold tracking-wider uppercase">
-                        <span className="text-light-textSecondary dark:text-neutral-500">Proficiency</span>
-                        <span className="text-light-textPrimary dark:text-neutral-300">{skill.level}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-secondary to-accent rounded-full transition-all duration-500"
-                          style={{ width: `${skill.level}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {skillMatrixContent}
+            </div>
           </div>
         )}
 

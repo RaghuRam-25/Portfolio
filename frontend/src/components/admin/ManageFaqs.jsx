@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit, FiTrash2, FiLoader, FiInfo, FiHelpCircle, FiSave, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { FiPlus, FiEdit, FiTrash2, FiLoader, FiInfo, FiHelpCircle, FiSave } from 'react-icons/fi';
 import { faqAPI } from '../../utils/api';
 import Modal from '../ui/Modal';
 

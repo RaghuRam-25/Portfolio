@@ -1,7 +1,42 @@
 const Project = require('../models/Project');
 const { deleteFile } = require('../utils/fileUpload'); // Assuming you have a fileUpload utility for deleting files
+const path = require('path');
 
-const toPublicUploadPath = (file) => file.path.replace(/\\/g, '/');
+const toPublicUploadPath = (file) => `uploads/${path.basename(file.path)}`;
+
+/**
+ * Converts relative or absolute file paths in a project object to absolute, web-accessible URLs.
+ * @param {object} projectDoc - The Mongoose project document.
+ * @param {object} req - The Express request object to determine the base URL.
+ * @returns {object} A project object with absolute URLs for media.
+ */
+const resolveProjectMediaUrls = (projectDoc, req) => {
+    const project = projectDoc.toObject();
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+    const resolveUrl = (mediaPath) => {
+        if (!mediaPath || mediaPath.startsWith('http')) {
+            return mediaPath; // It's already an absolute URL or empty.
+        }
+        // Look for the 'uploads' folder marker to handle both absolute local paths and relative paths.
+        const uploadMarker = 'uploads';
+        const uploadIndex = mediaPath.replace(/\\/g, '/').lastIndexOf(uploadMarker);
+
+        if (uploadIndex !== -1) {
+            // Extract the path from 'uploads' onwards.
+            const relativePath = mediaPath.substring(uploadIndex);
+            return `${baseUrl}/${relativePath.replace(/\\/g, '/')}`;
+        }
+        // Fallback for paths that don't contain 'uploads' but are relative.
+        return `${baseUrl}/${mediaPath.replace(/\\/g, '/').replace(/^\//, '')}`;
+    };
+
+    project.thumbnail = resolveUrl(project.thumbnail);
+    if (project.images && project.images.length > 0) {
+        project.images = project.images.map(resolveUrl);
+    }
+    return project;
+};
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -9,7 +44,8 @@ const toPublicUploadPath = (file) => file.path.replace(/\\/g, '/');
 const getProjects = async (req, res) => {
     try {
         const projects = await Project.find({}).sort({ order: 1, createdAt: -1 });
-        res.json({ success: true, data: projects });
+        const resolvedProjects = projects.map(p => resolveProjectMediaUrls(p, req));
+        res.json({ success: true, data: resolvedProjects });
     } catch (error) {
         console.error('Error fetching projects:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -25,7 +61,7 @@ const getProjectById = async (req, res) => {
         if (!project) {
             return res.status(404).json({ success: false, message: 'Project not found' });
         }
-        res.json({ success: true, data: project });
+        res.json({ success: true, data: resolveProjectMediaUrls(project, req) });
     } catch (error) {
         console.error('Error fetching project by ID:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -41,13 +77,22 @@ const createProject = async (req, res) => {
         const thumbnail = req.files?.thumbnail?.[0] ? toPublicUploadPath(req.files.thumbnail[0]) : null;
         const galleryImages = (req.files?.images || []).map(toPublicUploadPath);
 
+        let parsedTechStack = [];
+        if (techStack) {
+            try {
+                parsedTechStack = JSON.parse(techStack);
+            } catch (e) {
+                return res.status(400).json({ success: false, message: 'Invalid format for techStack. It should be a JSON array.' });
+            }
+        }
+
         const project = await Project.create({
             title,
             description,
             category,
             thumbnail,
             images: galleryImages,
-            techStack: techStack ? JSON.parse(techStack) : [],
+            techStack: parsedTechStack,
             githubUrl,
             liveUrl,
             isFeatured: isFeatured === true || isFeatured === 'true',
@@ -55,7 +100,7 @@ const createProject = async (req, res) => {
             order,
         });
 
-        res.status(201).json({ success: true, message: 'Project created successfully', data: project });
+        res.status(201).json({ success: true, message: 'Project created successfully', data: resolveProjectMediaUrls(project, req) });
     } catch (error) {
         console.error('Error creating project:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -82,16 +127,33 @@ const updateProject = async (req, res) => {
             await deleteFile(project.thumbnail);
         }
 
-        const retainedImages = existingImages ? JSON.parse(existingImages) : project.images;
+        let retainedImages = project.images;
+        if (existingImages) {
+            try {
+                retainedImages = JSON.parse(existingImages);
+            } catch (e) {
+                return res.status(400).json({ success: false, message: 'Invalid format for existingImages. It should be a JSON array.' });
+            }
+        }
+
         const removedImages = project.images.filter(image => !retainedImages.includes(image));
         await Promise.all(removedImages.map(image => deleteFile(image)));
+
+        let parsedTechStack = project.techStack;
+        if (techStack) {
+            try {
+                parsedTechStack = JSON.parse(techStack);
+            } catch (e) {
+                return res.status(400).json({ success: false, message: 'Invalid format for techStack. It should be a JSON array.' });
+            }
+        }
 
         project.title = title || project.title;
         project.description = description || project.description;
         project.category = category || project.category;
         project.thumbnail = thumbnail || project.thumbnail;
         project.images = [...retainedImages, ...galleryImages];
-        project.techStack = techStack ? JSON.parse(techStack) : project.techStack;
+        project.techStack = parsedTechStack;
         project.githubUrl = githubUrl || project.githubUrl;
         project.liveUrl = liveUrl || project.liveUrl;
         project.isFeatured = isFeatured !== undefined ? isFeatured === true || isFeatured === 'true' : project.isFeatured;
@@ -99,7 +161,7 @@ const updateProject = async (req, res) => {
         project.order = order !== undefined ? order : project.order;
 
         const updatedProject = await project.save();
-        res.json({ success: true, message: 'Project updated successfully', data: updatedProject });
+        res.json({ success: true, message: 'Project updated successfully', data: resolveProjectMediaUrls(updatedProject, req) });
     } catch (error) {
         console.error('Error updating project:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -113,7 +175,7 @@ const deleteProject = async (req, res) => {
     try {
         const project = await Project.findByIdAndDelete(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
-        
+
         if (project.thumbnail) await deleteFile(project.thumbnail);
         if (project.images && project.images.length > 0) await Promise.all(project.images.map(img => deleteFile(img)));
         res.json({ success: true, message: 'Project deleted successfully' });

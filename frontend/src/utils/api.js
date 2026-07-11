@@ -10,6 +10,22 @@ if (apiURL && !apiURL.endsWith('/api') && !apiURL.endsWith('/api/')) {
 const BASE_URL = apiURL;
 export const SOCKET_URL = BASE_URL.replace(/\/api\/?$/, '');
 
+export const resolveMediaUrl = (url, fallback = '') => {
+  if (!url) return fallback;
+
+  const normalizedUrl = String(url).replace(/\\/g, '/');
+  if (/^https?:\/\//i.test(normalizedUrl) || normalizedUrl.startsWith('blob:') || normalizedUrl.startsWith('data:')) {
+    return normalizedUrl;
+  }
+  if (normalizedUrl.startsWith('/uploads/')) {
+    return `${SOCKET_URL}${normalizedUrl}`;
+  }
+  if (normalizedUrl.startsWith('uploads/')) {
+    return `${SOCKET_URL}/${normalizedUrl}`;
+  }
+  return normalizedUrl;
+};
+
 // LocalStorage থেকে JWT token নেওয়া
 const getToken = () => localStorage.getItem('portfolio_token');
 

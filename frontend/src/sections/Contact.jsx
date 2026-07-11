@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { FiMail, FiGithub, FiLinkedin, FiChevronDown, FiChevronUp, FiHelpCircle } from 'react-icons/fi';
+import { FiMail, FiGithub, FiLinkedin, FiChevronDown, FiChevronUp, FiHelpCircle, FiInfo, FiLoader } from 'react-icons/fi';
 import { FaWhatsapp, FaFacebook, FaTwitter, FaInstagram, FaYoutube, FaDiscord, FaTelegram } from 'react-icons/fa';
 import Toast from '../components/Toast';
 import { messagesAPI, faqAPI, socialLinkAPI } from '../utils/api';
 
-export default function Contact({ user, setActiveTab, profile }) {
+export default function Contact({ profile }) {
   const [formData, setFormData] = useState({ senderName: '', senderEmail: '', message: '' });
   const [faqs, setFaqs] = useState([]);
   const [openFaqId, setOpenFaqId] = useState(null);
   const [socials, setSocials] = useState([]);
+  const [isFaqLoading, setIsFaqLoading] = useState(true);
+  const [faqError, setFaqError] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('success');
@@ -17,11 +19,20 @@ export default function Contact({ user, setActiveTab, profile }) {
 
   useEffect(() => {
     const fetchFaqs = async () => {
+      setIsFaqLoading(true);
+      setFaqError('');
       try {
         const response = await faqAPI.getAll();
-        if (response.success) setFaqs(response.data);
+        if (response.success) {
+          setFaqs(Array.isArray(response.data) ? response.data : []);
+        } else {
+          setFaqError(response.message || 'FAQs could not be loaded.');
+        }
       } catch (error) {
         console.error("Error loading FAQs:", error);
+        setFaqError('FAQs could not be loaded right now.');
+      } finally {
+        setIsFaqLoading(false);
       }
     };
 
@@ -81,19 +92,19 @@ export default function Contact({ user, setActiveTab, profile }) {
   };
 
   return (
-    <section id="contact" className="py-24 border-t border-light-border/30 dark:border-neutral-900 bg-black/5">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="contact" className="py-16 sm:py-24 border-t border-light-border/30 dark:border-neutral-900 bg-black/5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
         {/* Header */}
-        <div className="mb-16 text-center animate-fade-in-up">
-          <h2 className="text-3xl md:text-4xl font-black text-white">{contactInfo.heading || "Let's Start A Project"}</h2>
+        <div className="mb-10 sm:mb-16 text-center animate-fade-in-up">
+          <h2 className="text-3xl md:text-4xl font-black text-light-textPrimary dark:text-white">{contactInfo.heading || "Let's Start A Project"}</h2>
           <p className="text-sm text-neutral-400 mt-2 max-w-xl mx-auto">{contactInfo.subtitle || 'Choose a channel or use the secure portal.'}</p>
         </div>
 
         {/* Form + FAQ */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-start max-w-5xl mx-auto">
           {/* Email Form */}
-          <div className="p-6 rounded-2xl border border-neutral-800 bg-neutral-900/40 animate-fade-in-up animation-delay-100">
+          <div className="p-4 sm:p-6 rounded-2xl border border-neutral-800 bg-neutral-900/40 animate-fade-in-up animation-delay-100 min-w-0">
             <h3 className="text-sm font-bold mb-6 flex items-center gap-2 text-white"><FiMail className="text-accent-purple" /> {contactInfo.formTitle || 'Drop an Email'}</h3>
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <input type="text" placeholder="Your Name (Optional)" value={formData.senderName} onChange={(e) => setFormData({ ...formData, senderName: e.target.value })} className="w-full p-3 text-xs rounded-xl bg-neutral-950 border border-neutral-800 focus:ring-1 focus:ring-accent-purple focus:border-accent-purple text-white outline-none transition-all" />
@@ -106,20 +117,33 @@ export default function Contact({ user, setActiveTab, profile }) {
           </div>
 
           {/* FAQ */}
-          <div className="p-6 rounded-2xl border border-neutral-800 bg-neutral-900/40 min-h-[300px] animate-fade-in-up animation-delay-200">
+          <div className="p-4 sm:p-6 rounded-2xl border border-neutral-800 bg-neutral-900/40 min-h-[300px] animate-fade-in-up animation-delay-200 min-w-0">
             <h3 className="text-sm font-bold mb-6 flex items-center gap-2 text-white"><FiHelpCircle className="text-accent-purple" /> Frequently Asked Questions</h3>
-            {faqs.length === 0 ? (
-              <p className="text-xs text-neutral-500">No questions have been loaded yet.</p>
+            {isFaqLoading ? (
+              <div className="flex items-center justify-center py-12 text-neutral-400">
+                <FiLoader className="animate-spin text-2xl" />
+              </div>
+            ) : faqError ? (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-red-300 flex gap-2">
+                <FiInfo className="mt-0.5 flex-shrink-0" />
+                <span>{faqError}</span>
+              </div>
+            ) : faqs.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-neutral-800 bg-neutral-950/30 p-6 text-center">
+                <FiHelpCircle className="mx-auto text-3xl text-neutral-600 mb-2" />
+                <p className="text-xs font-semibold text-neutral-400">No FAQs published yet.</p>
+                <p className="text-xs text-neutral-600 mt-1">Please use the contact form for now.</p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {faqs.map((faq) => (
                   <div key={faq._id} className="border-b border-neutral-800 pb-3">
                     <button onClick={() => toggleFaq(faq._id)} className="w-full flex justify-between items-center text-left py-2 text-xs font-bold text-white hover:text-accent-purple transition-colors">
-                      <span>{faq.question}</span>
+                      <span className="min-w-0 pr-3 break-words">{faq.question}</span>
                       {openFaqId === faq._id ? <FiChevronUp className="text-accent-purple flex-shrink-0 ml-2" /> : <FiChevronDown className="text-neutral-500 flex-shrink-0 ml-2" />}
                     </button>
                     {openFaqId === faq._id && (
-                      <div className="mt-2 text-xs text-neutral-400 leading-relaxed pl-1 animate-fade-in-up">
+                      <div className="mt-2 text-xs text-neutral-400 leading-relaxed pl-1 animate-fade-in-up break-words">
                         {faq.answer}
                       </div>
                     )}
@@ -132,11 +156,11 @@ export default function Contact({ user, setActiveTab, profile }) {
 
         {/* Social Links */}
         {socials.length > 0 && (
-          <div className="mt-16 pt-12 border-t border-neutral-800">
+          <div className="mt-12 sm:mt-16 pt-10 sm:pt-12 border-t border-neutral-800">
             <h3 className="text-center text-xs font-bold uppercase tracking-wider text-neutral-500 mb-8 animate-fade-in-up">
               {contactInfo.socialHeading || 'Or connect via Social Channels'}
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 max-w-3xl mx-auto">
               {socials.map((social, index) => {
                 const platform = socialPlatformStyles[social.platform];
                 if (!platform) return null;
@@ -146,11 +170,11 @@ export default function Contact({ user, setActiveTab, profile }) {
                     href={social.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`group p-6 rounded-2xl border border-neutral-800 bg-neutral-900/40 flex flex-col items-center justify-center gap-3 ${platform.hover} hover:text-white hover:border-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in-up`}
+                    className={`group p-4 sm:p-6 rounded-2xl border border-neutral-800 bg-neutral-900/40 flex flex-col items-center justify-center gap-3 min-w-0 ${platform.hover} hover:text-white hover:border-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in-up`}
                     style={{ animationDelay: `${index * 80}ms` }}
                   >
                     <div className={`text-4xl ${platform.color} group-hover:text-white transition-colors`}>{platform.icon}</div>
-                    <h4 className="text-xs font-bold uppercase text-neutral-300 group-hover:text-white transition-colors">{platform.name}</h4>
+                    <h4 className="text-xs font-bold uppercase text-neutral-300 group-hover:text-white transition-colors text-center break-words">{platform.name}</h4>
                   </a>
                 );
               })}
