@@ -70,7 +70,7 @@ export default function HeroIntro({ onComplete, profile }) {
         className="absolute top-5 right-5 z-40 px-4 py-2 text-xs font-bold tracking-wider uppercase rounded-full border border-cyan-400/30 text-cyan-300/80 hover:text-cyan-200 hover:border-cyan-400/60 hover:bg-cyan-400/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60"
         aria-label="Skip intro animation"
       >
-        Skip Intro
+        Skip
       </button>
 
       {/* ফিউচারিস্টিক গ্রিড ব্যাকগ্রাউন্ড */}
@@ -119,7 +119,7 @@ export default function HeroIntro({ onComplete, profile }) {
                 strokeDashoffset: '1200',
               }}
             >
-              {profile?.name || 'Portfolio'}
+              {profile?.name || 'Topon Chandro Ray'}
             </text>
           </svg>
         </div>

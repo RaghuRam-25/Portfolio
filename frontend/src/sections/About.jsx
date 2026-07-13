@@ -8,25 +8,25 @@ import { sanitizeProfile } from '../utils/profileSanitizer';
 import { calculateExperience } from '../utils/experience';
 const categorizeTech = (techName) => {
   const name = techName.toLowerCase().trim();
-  
+
   const frontendKeywords = [
-    'react', 'vue', 'angular', 'next', 'nuxt', 'svelte', 'html', 'css', 
-    'tailwind', 'bootstrap', 'javascript', 'js', 'typescript', 'ts', 
-    'sass', 'less', 'redux', 'zustand', 'styled', 'vite', 'webpack', 
+    'react', 'vue', 'angular', 'next', 'nuxt', 'svelte', 'html', 'css',
+    'tailwind', 'bootstrap', 'javascript', 'js', 'typescript', 'ts',
+    'sass', 'less', 'redux', 'zustand', 'styled', 'vite', 'webpack',
     'flutter', 'native', 'android', 'ios', 'expo', 'ui', 'material',
     'jquery', 'ember', 'backbone'
   ];
-  
+
   const backendKeywords = [
-    'node', 'express', 'nest', 'django', 'flask', 'fastapi', 'spring', 
-    'laravel', 'php', 'ruby', 'rails', 'go', 'golang', 'java', 'python', 
-    'c#', 'asp', 'dotnet', 'rest', 'graphql', 'apollo', 'microservice', 
+    'node', 'express', 'nest', 'django', 'flask', 'fastapi', 'spring',
+    'laravel', 'php', 'ruby', 'rails', 'go', 'golang', 'java', 'python',
+    'c#', 'asp', 'dotnet', 'rest', 'graphql', 'apollo', 'microservice',
     'socket', 'websocket', 'koa', 'hapi', 'fastify'
   ];
-  
+
   const databaseKeywords = [
-    'mongo', 'mongoose', 'sql', 'postgres', 'mysql', 'sqlite', 'redis', 
-    'firebase', 'cassandra', 'dynamodb', 'oracle', 'mariadb', 'prisma', 
+    'mongo', 'mongoose', 'sql', 'postgres', 'mysql', 'sqlite', 'redis',
+    'firebase', 'cassandra', 'dynamodb', 'oracle', 'mariadb', 'prisma',
     'sequelize', 'supabase', 'cockroach', 'neo4j'
   ];
 
