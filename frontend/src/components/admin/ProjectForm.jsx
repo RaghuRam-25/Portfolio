@@ -109,11 +109,11 @@ export default function ProjectForm({ project, onClose, showToast, onSaveSuccess
                 }
             });
 
-            // Upload thumbnail if new one is selected
+            // If a new thumbnail file is selected, append it.
+            // The `thumbnailUrl` string from the form state is already appended in the loop above.
+            // The backend will prioritize the file over the URL if both are present.
             if (thumbnailFile) {
                 data.append('thumbnail', thumbnailFile);
-            } else {
-                data.append('thumbnailUrl', formData.thumbnailUrl);
             }
 
             // Upload new gallery images
