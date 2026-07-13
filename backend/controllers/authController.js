@@ -4,6 +4,13 @@ const crypto = require('crypto');
 const sendEmail = require('../models/sendEmail'); // sendEmail utility
 const { registerSchema } = require('../middleware/validators');
 
+const resolveUrl = (path, req) => {
+    if (!path || path.startsWith('http')) return path;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const normalizedPath = path.replace(/\\/g, '/');
+    return `${baseUrl}/${normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath}`;
+};
+
 const generateToken = (userId) => {
     return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
         expiresIn: '7d',
@@ -139,7 +146,7 @@ exports.login = async (req, res, next) => {
             _id: user._id,
             name: user.name,
             email: user.email,
-            avatarUrl: user.avatarUrl,
+            avatarUrl: resolveUrl(user.avatarUrl, req),
             role: user.role,
             isPortfolioProfile: user.isPortfolioProfile,
             isVerified: user.isVerified,
@@ -174,7 +181,7 @@ exports.oauthCallback = (req, res, next) => {
             name,
             email,
             _id: _id.toString(),
-            avatarUrl: avatarUrl || '',
+            avatarUrl: resolveUrl(avatarUrl, req) || '',
             role: role || 'user'
         }).toString();
 

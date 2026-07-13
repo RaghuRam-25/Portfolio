@@ -44,21 +44,20 @@ const resolveProjectMediaUrls = (projectDoc, req) => {
 // @desc    Get all projects
 // @route   GET /api/projects
 // @access  Public
-const getProjects = async (req, res) => {
+const getProjects = async (req, res, next) => {
     try {
         const projects = await Project.find({}).sort({ order: 1, createdAt: -1 });
         const resolvedProjects = projects.map(p => resolveProjectMediaUrls(p, req));
         res.json({ success: true, data: resolvedProjects });
     } catch (error) {
-        console.error('Error fetching projects:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        next(error);
     }
 };
 
 // @desc    Get single project by ID
 // @route   GET /api/projects/:id
 // @access  Public
-const getProjectById = async (req, res) => {
+const getProjectById = async (req, res, next) => {
     try {
         const project = await Project.findById(req.params.id);
         if (!project) {
@@ -66,19 +65,30 @@ const getProjectById = async (req, res) => {
         }
         res.json({ success: true, data: resolveProjectMediaUrls(project, req) });
     } catch (error) {
-        console.error('Error fetching project by ID:', error);
-        res.status(500).json({ success: false, message: 'Server Error' });
+        next(error);
     }
 };
 
 // @desc    Create a new project
 // @route   POST /api/projects
 // @access  Admin
-const createProject = async (req, res) => {
+const createProject = async (req, res, next) => {
     try {
-        const { title, description, category, techStack, githubUrl, liveUrl, isFeatured, isDelivered, order } = req.body;
-        const thumbnail = req.files?.thumbnail?.[0] ? toPublicUploadPath(req.files.thumbnail[0]) : null;
-        const galleryImages = (req.files?.images || []).map(toPublicUploadPath);
+        const { title, description, category, techStack, githubUrl, liveUrl, isFeatured, isDelivered, order, thumbnailUrl, newImageUrls } = req.body;
+
+        // Handle thumbnail: prioritize file upload over URL
+        const thumbnailFile = req.files?.thumbnail?.[0];
+        const finalThumbnail = thumbnailFile ? toPublicUploadPath(thumbnailFile) : (thumbnailUrl || null);
+
+        // Handle gallery images: combine uploaded files and new URLs
+        const uploadedGalleryImages = (req.files?.images || []).map(toPublicUploadPath);
+        let newUrls = [];
+        if (newImageUrls) {
+            try {
+                newUrls = JSON.parse(newImageUrls);
+            } catch (e) { /* Ignore malformed JSON */ }
+        }
+        const finalGalleryImages = [...uploadedGalleryImages, ...newUrls];
 
         let parsedTechStack = [];
         if (techStack) {
@@ -93,8 +103,8 @@ const createProject = async (req, res) => {
             title,
             description,
             category,
-            thumbnail,
-            images: galleryImages,
+            thumbnail: finalThumbnail,
+            images: finalGalleryImages,
             techStack: parsedTechStack,
             githubUrl,
             liveUrl,
@@ -105,32 +115,48 @@ const createProject = async (req, res) => {
 
         res.status(201).json({ success: true, message: 'Project created successfully', data: resolveProjectMediaUrls(project, req) });
     } catch (error) {
-        console.error('Error creating project:', error);
-        res.status(500).json({ success: false, message: error.message });
+        next(error);
     }
 };
 
 // @desc    Update an existing project
 // @route   PUT /api/projects/:id
 // @access  Admin
-const updateProject = async (req, res) => {
+const updateProject = async (req, res, next) => {
     try {
-        const { title, description, category, techStack, githubUrl, liveUrl, isFeatured, isDelivered, order, existingImages } = req.body;
+        const { title, description, category, techStack, githubUrl, liveUrl, isFeatured, isDelivered, order, thumbnailUrl, newImageUrls, existingImages } = req.body;
         let project = await Project.findById(req.params.id);
 
         if (!project) {
             return res.status(404).json({ success: false, message: 'Project not found' });
         }
 
-        // If a new thumbnail is uploaded, delete the old one
-        const thumbnail = req.files?.thumbnail?.[0] ? toPublicUploadPath(req.files.thumbnail[0]) : null;
-        const galleryImages = (req.files?.images || []).map(toPublicUploadPath);
-
-        if (thumbnail && project.thumbnail) {
-            await deleteFile(project.thumbnail);
+        // Handle Thumbnail update
+        const newThumbnailFile = req.files?.thumbnail?.[0];
+        if (newThumbnailFile) {
+            // If a new file is uploaded, delete the old one (if it's a local file)
+            if (project.thumbnail && !project.thumbnail.startsWith('http')) {
+                await deleteFile(project.thumbnail);
+            }
+            project.thumbnail = toPublicUploadPath(newThumbnailFile);
+        } else if (thumbnailUrl !== undefined) {
+            // If a URL is provided and it's different from the old one, delete the old local file
+            if (project.thumbnail && project.thumbnail !== thumbnailUrl && !project.thumbnail.startsWith('http')) {
+                await deleteFile(project.thumbnail);
+            }
+            project.thumbnail = thumbnailUrl;
         }
 
-        let retainedImages = project.images;
+        // Handle Gallery update
+        const uploadedGalleryImages = (req.files?.images || []).map(toPublicUploadPath);
+        let newUrls = [];
+        if (newImageUrls) {
+            try {
+                newUrls = JSON.parse(newImageUrls);
+            } catch (e) { /* Ignore malformed JSON */ }
+        }
+
+        let retainedImages = [];
         if (existingImages) {
             try {
                 retainedImages = JSON.parse(existingImages);
@@ -138,8 +164,8 @@ const updateProject = async (req, res) => {
                 return res.status(400).json({ success: false, message: 'Invalid format for existingImages. It should be a JSON array.' });
             }
         }
-
-        const removedImages = project.images.filter(image => !retainedImages.includes(image));
+        // Delete only local files that were removed from the 'existingImages' list
+        const removedImages = project.images.filter(image => !retainedImages.includes(image) && !image.startsWith('http'));
         await Promise.all(removedImages.map(image => deleteFile(image)));
 
         let parsedTechStack = project.techStack;
@@ -156,8 +182,7 @@ const updateProject = async (req, res) => {
         if (title) project.title = title;
         if (description !== undefined) project.description = description;
         if (category) project.category = category;
-        if (thumbnail) project.thumbnail = thumbnail;
-        project.images = [...retainedImages, ...galleryImages];
+        project.images = [...retainedImages, ...uploadedGalleryImages, ...newUrls];
         project.techStack = parsedTechStack;
         if (githubUrl !== undefined) project.githubUrl = githubUrl;
         if (liveUrl !== undefined) project.liveUrl = liveUrl;
@@ -168,25 +193,28 @@ const updateProject = async (req, res) => {
         const updatedProject = await project.save();
         res.json({ success: true, message: 'Project updated successfully', data: resolveProjectMediaUrls(updatedProject, req) });
     } catch (error) {
-        console.error('Error updating project:', error);
-        res.status(500).json({ success: false, message: error.message });
+        next(error);
     }
 };
 
 // @desc    Delete a project
 // @route   DELETE /api/projects/:id
 // @access  Admin
-const deleteProject = async (req, res) => {
+const deleteProject = async (req, res, next) => {
     try {
         const project = await Project.findByIdAndDelete(req.params.id);
         if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-        if (project.thumbnail) await deleteFile(project.thumbnail);
-        if (project.images && project.images.length > 0) await Promise.all(project.images.map(img => deleteFile(img)));
+        if (project.thumbnail && !project.thumbnail.startsWith('http')) {
+            await deleteFile(project.thumbnail);
+        }
+        if (project.images && project.images.length > 0) {
+            const localImages = project.images.filter(img => img && !img.startsWith('http'));
+            await Promise.all(localImages.map(img => deleteFile(img)));
+        }
         res.json({ success: true, message: 'Project deleted successfully' });
     } catch (error) {
-        console.error('Error deleting project:', error);
-        res.status(500).json({ success: false, message: error.message });
+        next(error);
     }
 };
 

@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiSave, FiLoader, FiAward } from 'react-icons/fi';
+import { FiSave, FiLoader, FiAward, FiLink } from 'react-icons/fi';
 import { certificateAPI } from '../../utils/api';
-
-// আসল প্রোজেক্টে এই mockApi এর পরিবর্তে utils/api.js থেকে আসল API কল করতে হবে।
-const mockApi = {
-    create: async (formData) => { console.log("Creating certificate:", formData); await new Promise(r => setTimeout(r, 1000)); return { success: true, message: "Certificate created!" }; },
-    update: async (id, formData) => { console.log(`Updating certificate ${id}:`, formData); await new Promise(r => setTimeout(r, 1000)); return { success: true, message: "Certificate updated!" }; },
-};
 
 export default function CertificateForm({ certificate, onClose, showToast, onSaveSuccess }) {
     const [formData, setFormData] = useState({
@@ -15,6 +9,7 @@ export default function CertificateForm({ certificate, onClose, showToast, onSav
         issueDate: '',
         credentialLink: '',
         order: 0,
+        certificateImageUrl: '',
     });
     const [imageFile, setImageFile] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -27,6 +22,7 @@ export default function CertificateForm({ certificate, onClose, showToast, onSav
                 issueDate: certificate.issueDate ? new Date(certificate.issueDate).toISOString().split('T')[0] : '',
                 credentialLink: certificate.credentialLink || '',
                 order: certificate.order || 0,
+                certificateImageUrl: certificate.certificateImage || '',
             });
         }
     }, [certificate]);
@@ -50,6 +46,8 @@ export default function CertificateForm({ certificate, onClose, showToast, onSav
             Object.keys(formData).forEach(key => data.append(key, formData[key]));
             if (imageFile) {
                 data.append('certificateImage', imageFile);
+            } else {
+                data.append('certificateImageUrl', formData.certificateImageUrl);
             }
 
             const response = certificate?._id
@@ -81,12 +79,16 @@ export default function CertificateForm({ certificate, onClose, showToast, onSav
                 <InputField label="Issue Date" name="issueDate" type="date" value={formData.issueDate} onChange={handleInputChange} required />
                 <InputField label="Credential Link (Optional)" name="credentialLink" type="url" value={formData.credentialLink} onChange={handleInputChange} placeholder="https://example.com/credential/123" />
 
-                <div>
-                    <label className="block text-xs font-bold text-neutral-500 mb-1.5">Certificate Image</label>
-                    <input type="file" name="certificateImage" onChange={handleFileChange} accept="image/*" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" required={!certificate} />
-                    {(imageFile || (certificate && certificate.certificateImage)) && (
-                        <div className="mt-3">
-                            <img src={imageFile ? URL.createObjectURL(imageFile) : certificate.certificateImage} alt="Preview" className="w-48 object-cover rounded-lg border border-neutral-700" />
+                <div className="p-4 border border-dashed border-neutral-700 rounded-lg">
+                    <InputField icon={<FiLink />} label="Certificate Image URL" name="certificateImageUrl" value={formData.certificateImageUrl} onChange={handleInputChange} placeholder="Paste direct image URL" />
+                    <div className="text-center my-2 text-xs text-neutral-500 font-bold">OR</div>
+
+                    <label className="block text-xs font-bold text-neutral-500 mb-1.5">Upload Certificate Image</label>
+                    <input type="file" name="certificateImage" onChange={handleFileChange} accept="image/*" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" />
+
+                    {(imageFile || formData.certificateImageUrl) && (
+                        <div className="mt-4">
+                            <img src={imageFile ? URL.createObjectURL(imageFile) : formData.certificateImageUrl} alt="Preview" className="w-48 object-cover rounded-lg border border-neutral-700" />
                         </div>
                     )}
                 </div>
@@ -103,9 +105,12 @@ export default function CertificateForm({ certificate, onClose, showToast, onSav
     );
 }
 
-const InputField = ({ label, name, value, onChange, placeholder, type = 'text', required = false }) => (
+const InputField = ({ icon, label, name, value, onChange, placeholder, type = 'text', required = false }) => (
     <div>
         <label className="block text-xs font-bold text-neutral-500 mb-1.5">{label}{required && <span className="text-red-500">*</span>}</label>
-        <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} className="w-full p-2.5 text-sm rounded-lg bg-neutral-700/50 border border-neutral-700 focus:ring-1 focus:ring-accent-purple focus:border-accent-purple" />
+        <div className="relative">
+            {icon && <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-400">{icon}</div>}
+            <input type={type} name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} className={`w-full p-2.5 text-sm rounded-lg bg-neutral-700/50 border border-neutral-700 focus:ring-1 focus:ring-accent-purple focus:border-accent-purple ${icon ? 'pl-10' : ''}`} />
+        </div>
     </div>
 );

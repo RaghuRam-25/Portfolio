@@ -13,11 +13,13 @@ export default function ProjectForm({ project, onClose, showToast, onSaveSuccess
         isFeatured: false,
         isDelivered: false,
         order: 0,
+        thumbnailUrl: '',
+        galleryImageUrls: '',
     });
 
     const [thumbnailFile, setThumbnailFile] = useState(null);
     const [galleryFiles, setGalleryFiles] = useState([]);
-    const [existingImages, setExistingImages] = useState([]); // For images already in DB
+    const [existingImages, setExistingImages] = useState([]);
     const [newTechSkill, setNewTechSkill] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -33,6 +35,8 @@ export default function ProjectForm({ project, onClose, showToast, onSaveSuccess
                 isFeatured: project.isFeatured || false,
                 isDelivered: project.isDelivered || false,
                 order: project.order || 0,
+                thumbnailUrl: project.thumbnail || '',
+                galleryImageUrls: '', // Always start with an empty textarea for new URLs
             });
             setExistingImages(project.images || []);
         }
@@ -50,6 +54,14 @@ export default function ProjectForm({ project, onClose, showToast, onSaveSuccess
         if (e.target.files && e.target.files[0]) {
             setThumbnailFile(e.target.files[0]);
         }
+    };
+
+    const getGalleryUrlsFromTextArea = () => {
+        if (!formData.galleryImageUrls) return [];
+        return formData.galleryImageUrls
+            .split(/[\n,]+/)
+            .map(url => url.trim())
+            .filter(Boolean);
     };
 
     const handleGalleryFileChange = (e) => {
@@ -100,16 +112,24 @@ export default function ProjectForm({ project, onClose, showToast, onSaveSuccess
             // Upload thumbnail if new one is selected
             if (thumbnailFile) {
                 data.append('thumbnail', thumbnailFile);
+            } else {
+                data.append('thumbnailUrl', formData.thumbnailUrl);
             }
 
             // Upload new gallery images
             if (galleryFiles.length > 0) {
                 for (const file of galleryFiles) {
-                    data.append('images', file);
+                    data.append('images', file); // Backend expects 'images'
                 }
             }
-            // Add existing images to the payload
+            // Send the list of original images that should be kept
             data.append('existingImages', JSON.stringify(existingImages));
+
+            // Send new URLs from the textarea
+            const newImageUrls = getGalleryUrlsFromTextArea();
+            if (newImageUrls.length > 0) {
+                data.append('newImageUrls', JSON.stringify(newImageUrls));
+            }
 
             let response;
             if (project?._id) {
@@ -171,25 +191,42 @@ export default function ProjectForm({ project, onClose, showToast, onSaveSuccess
                 <InputField icon={<FiLink />} label="Live URL" name="liveUrl" value={formData.liveUrl} onChange={handleInputChange} placeholder="https://live-project.com" />
 
                 {/* Thumbnail Upload */}
-                <div>
-                    <label className="block text-xs font-bold text-neutral-500 mb-1.5">Thumbnail Image</label>
+                <div className="p-4 border border-dashed border-neutral-700 rounded-lg">
+                    <InputField icon={<FiLink />} label="Thumbnail Image URL" name="thumbnailUrl" value={formData.thumbnailUrl} onChange={handleInputChange} placeholder="Paste direct image URL" />
+                    <div className="text-center my-2 text-xs text-neutral-500 font-bold">OR</div>
+                    <label className="block text-xs font-bold text-neutral-500 mb-1.5">Upload Thumbnail from Computer</label>
                     <input type="file" name="thumbnailFile" onChange={handleThumbnailChange} accept="image/*" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" />
-                    {(thumbnailFile || (project && project.thumbnail)) && (
-                        <div className="mt-3">
-                            <img src={thumbnailFile ? URL.createObjectURL(thumbnailFile) : resolveMediaUrl(project.thumbnail)} alt="Thumbnail Preview" className="w-32 h-24 object-cover rounded-lg border border-neutral-700" />
+                    {(thumbnailFile || formData.thumbnailUrl) && (
+                        <div className="mt-4">
+                            <img src={thumbnailFile ? URL.createObjectURL(thumbnailFile) : resolveMediaUrl(formData.thumbnailUrl)} alt="Thumbnail Preview" className="w-32 h-24 object-cover rounded-lg border border-neutral-700" />
                         </div>
                     )}
                 </div>
 
                 {/* Gallery Images Upload */}
-                <div>
-                    <label className="block text-xs font-bold text-neutral-500 mb-1.5">Gallery Images</label>
+                <div className="p-4 border border-dashed border-neutral-700 rounded-lg">
+                    <TextAreaField label="Add New Gallery Image URLs" name="galleryImageUrls" value={formData.galleryImageUrls} onChange={handleInputChange} placeholder="Paste multiple image URLs, separated by commas or newlines" rows="3" />
+                    <div className="text-center my-2 text-xs text-neutral-500 font-bold">OR</div>
+                    <label className="block text-xs font-bold text-neutral-500 mb-1.5">Upload New Gallery Images from Computer</label>
                     <input type="file" multiple name="galleryFiles" onChange={handleGalleryFileChange} accept="image/*" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" />
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <p className="text-xs text-neutral-500 mt-4 mb-2 font-bold">Image Previews</p>
+                    <div className="mt-2 flex flex-wrap gap-2 p-2 bg-neutral-800/50 rounded-lg min-h-[6rem]">
                         {existingImages.map((url, index) => (
                             <div key={`existing-${index}`} className="relative">
                                 <img src={resolveMediaUrl(url)} alt={`Existing ${index}`} className="w-24 h-20 object-cover rounded-lg border border-neutral-700" />
                                 <FiX className="absolute top-1 right-1 text-red-400 cursor-pointer bg-neutral-900 rounded-full p-0.5" onClick={() => removeExistingImage(url)} />
+                            </div>
+                        ))}
+                        {getGalleryUrlsFromTextArea().map((url, index) => (
+                            <div key={`new-url-${index}`} className="relative">
+                                <img src={resolveMediaUrl(url)} alt={`New URL ${index}`} className="w-24 h-20 object-cover rounded-lg border border-neutral-700" />
+                                <FiX
+                                    className="absolute top-1 right-1 text-red-400 cursor-pointer bg-neutral-900 rounded-full p-0.5"
+                                    onClick={() => {
+                                        const updatedUrls = getGalleryUrlsFromTextArea().filter(u => u !== url);
+                                        setFormData(prev => ({ ...prev, galleryImageUrls: updatedUrls.join(',\n') }));
+                                    }}
+                                />
                             </div>
                         ))}
                         {galleryFiles.map((file, index) => (

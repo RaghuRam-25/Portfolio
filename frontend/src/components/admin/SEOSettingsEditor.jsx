@@ -1,20 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiSave, FiLoader, FiSearch, FiEye, FiShare2 } from 'react-icons/fi';
+import { FiSave, FiLoader, FiSearch, FiEye, FiShare2, FiLink } from 'react-icons/fi';
 import { profileAPI, uploadAPI } from '../../utils/api';
-
-// আসল প্রোজেক্টে এই mockApi এর পরিবর্তে utils/api.js থেকে আসল API কল করতে হবে।
-const mockApi = {
-    updateProfile: async (payload) => {
-        console.log("Updating SEO settings with payload:", payload);
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        return { success: true, message: "SEO settings updated successfully!" };
-    },
-    uploadFile: async (file) => {
-        console.log(`Uploading file: ${file.name}`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return { success: true, data: { url: `https://cdn.your-domain.com/uploads/${Date.now()}-${file.name}` } };
-    }
-};
 
 export default function SEOSettingsEditor({ profile, refetchProfile, showToast }) {
     const [formData, setFormData] = useState({
@@ -115,9 +101,16 @@ export default function SEOSettingsEditor({ profile, refetchProfile, showToast }
                 <div className="p-4 border border-dashed border-neutral-700 rounded-lg">
                     <label className="block text-xs font-bold text-neutral-500 mb-1.5 flex items-center gap-1"><FiShare2 size={12} /> Open Graph Image</label>
                     <p className="text-xs text-neutral-500 mb-3">Recommended size: 1200x630 pixels. This image appears when you share the link on social media.</p>
+
+                    <InputField icon={<FiLink />} label="Image URL" name="ogImageUrl" value={formData.ogImageUrl} onChange={handleInputChange} placeholder="Paste direct image URL" />
+
+                    <div className="text-center my-2 text-xs text-neutral-500 font-bold">OR</div>
+
+                    <label className="block text-xs font-bold text-neutral-500 mb-1.5">Upload from Computer</label>
                     <input type="file" name="ogImageFile" onChange={handleFileChange} accept="image/png, image/jpeg" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" />
+
                     {(ogImageFile || formData.ogImageUrl) && (
-                        <div className="mt-3 p-2 bg-neutral-800 rounded-lg inline-block">
+                        <div className="mt-4 p-2 bg-neutral-800 rounded-lg inline-block">
                             <img src={ogImageFile ? URL.createObjectURL(ogImageFile) : formData.ogImageUrl} alt="OG Image Preview" className="max-h-32 rounded" />
                         </div>
                     )}

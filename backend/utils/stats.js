@@ -3,30 +3,47 @@ const User = require('../models/User');
 
 const publishedProjectFilter = { isPublished: { $ne: false } };
 
-const calculateExperienceLabel = (startDate, today = new Date()) => {
-  if (!startDate) return '0 Months';
+const calculateExperienceLabel = (startDateStr, today = new Date()) => {
+  if (!startDateStr) return "0 Days";
 
-  const start = new Date(startDate);
-  if (Number.isNaN(start.getTime()) || start > today) return '0 Months';
+  const start = new Date(startDateStr);
+
+  if (Number.isNaN(start.getTime()) || start > today) return "0 Days";
+
+  const diffTime = today.getTime() - start.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
   let years = today.getFullYear() - start.getFullYear();
   let months = today.getMonth() - start.getMonth();
+  const days = today.getDate() - start.getDate();
 
-  if (today.getDate() < start.getDate()) {
-    months -= 1;
+  if (days < 0) {
+    months--;
   }
 
   if (months < 0) {
-    years -= 1;
+    years--;
     months += 12;
   }
 
-  if (years >= 1) {
-    return `${years}+ ${years === 1 ? 'Year' : 'Years'}`;
+  // One month or less: less than 7 days -> Days, otherwise Weeks
+  if (years === 0 && months === 0) {
+    if (diffDays < 7) {
+      return `${diffDays} ${diffDays === 1 ? 'Day' : 'Days'}`;
+    }
+    const weeks = Math.floor(diffDays / 7);
+    return `${weeks} ${weeks === 1 ? 'Week' : 'Weeks'}`;
   }
 
-  const safeMonths = Math.max(months, 0);
-  return `${safeMonths} ${safeMonths === 1 ? 'Month' : 'Months'}`;
+  if (years === 0) {
+    return `${months} ${months === 1 ? 'Month' : 'Months'}`;
+  }
+
+  let expStr = `${years} ${years === 1 ? 'Year' : 'Years'}`;
+  if (months > 0) {
+    expStr += ` ${months} ${months === 1 ? 'Month' : 'Months'}`;
+  }
+  return expStr;
 };
 
 const getStats = async () => {

@@ -150,23 +150,29 @@ export default function HeroSectionEditor({ profile, refetchProfile, showToast }
                 <div className="p-4 border border-dashed border-neutral-700 rounded-lg space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                         <div>
-                            <label className="block text-xs font-bold text-neutral-500 mb-1.5">Hero Image</label>
+                            <InputField icon={<FiLink />} label="Hero Image URL" name="heroImageUrl" value={formData.heroImageUrl} onChange={handleInputChange} placeholder="Paste image URL" />
+                            <div className="text-center my-2 text-xs text-neutral-500 font-bold">OR</div>
+                            <label className="block text-xs font-bold text-neutral-500 mb-1.5">Upload Hero Image</label>
                             <input type="file" name="heroImageFile" onChange={handleFileChange} accept="image/*" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" />
                             {(heroImageFile || formData.heroImageUrl) && (
-                                <div className="mt-3">
+                                <div className="mt-4">
                                     <img src={heroImageFile ? URL.createObjectURL(heroImageFile) : formData.heroImageUrl} alt="Preview" className="w-24 h-24 object-cover rounded-lg border border-neutral-700" />
                                 </div>
                             )}
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-neutral-500 mb-1.5">Resume PDF</label>
+                            <InputField icon={<FiLink />} label="Resume URL" name="resumeUrl" value={formData.resumeUrl} onChange={handleInputChange} placeholder="Paste resume URL (.pdf)" />
+                            <div className="text-center my-2 text-xs text-neutral-500 font-bold">OR</div>
+                            <label className="block text-xs font-bold text-neutral-500 mb-1.5">Upload Resume PDF</label>
                             <input type="file" name="resumeFile" onChange={handleFileChange} accept=".pdf" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" />
-                            {resumeFile && <p className="text-xs text-neutral-400 mt-2">New: {resumeFile.name}</p>}
-                            {formData.resumeUrl && !resumeFile && (
-                                <a href={formData.resumeUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 text-xs text-accent-purple hover:underline">
-                                    <FiFileText /> View Current Resume
-                                </a>
-                            )}
+                            <div className="mt-3">
+                                {resumeFile && <p className="text-xs text-neutral-400">New file selected: {resumeFile.name}</p>}
+                                {formData.resumeUrl && !resumeFile && (
+                                    <a href={formData.resumeUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-xs text-accent-purple hover:underline">
+                                        <FiFileText /> View Current Resume
+                                    </a>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

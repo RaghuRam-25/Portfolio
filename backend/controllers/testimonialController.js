@@ -8,47 +8,71 @@ const toPublicUploadPath = (file) => {
     return `uploads/${path.basename(file.path)}`;
 };
 
+const resolveUrl = (path, req) => {
+    if (!path || path.startsWith('http')) return path;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const normalizedPath = path.replace(/\\/g, '/');
+    return `${baseUrl}/${normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath}`;
+};
+
+const resolveTestimonialUrls = (doc, req) => {
+    const obj = doc.toObject();
+    obj.clientImage = resolveUrl(obj.clientImage, req);
+    return obj;
+};
 // @desc    Get all testimonials
 // @route   GET /api/testimonials
 // @access  Public
-const getTestimonials = async (req, res) => {
+const getTestimonials = async (req, res, next) => {
     try {
         const testimonials = await Testimonial.find({}).sort({ order: 1, createdAt: -1 });
-        res.json({ success: true, data: testimonials });
+        res.json({ success: true, data: testimonials.map(t => resolveTestimonialUrls(t, req)) });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Server Error' });
+        next(error);
     }
 };
 
 // @desc    Create a new testimonial
 // @route   POST /api/testimonials
 // @access  Admin
-const createTestimonial = async (req, res) => {
+const createTestimonial = async (req, res, next) => {
     try {
-        const { clientName, company, review, rating, order } = req.body;
-        const clientImage = req.file ? toPublicUploadPath(req.file) : null;
+        const { clientName, company, review, rating, order, clientImageUrl } = req.body;
+        // Prioritize file upload over URL
+        const finalClientImage = req.file ? toPublicUploadPath(req.file) : (clientImageUrl || null);
 
-        const testimonial = await Testimonial.create({ clientName, company, review, rating, clientImage, order });
-        res.status(201).json({ success: true, message: 'Testimonial created successfully', data: testimonial });
+        const testimonial = await Testimonial.create({ clientName, company, review, rating, clientImage: finalClientImage, order });
+        res.status(201).json({ success: true, message: 'Testimonial created successfully', data: resolveTestimonialUrls(testimonial, req) });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        next(error);
     }
 };
 
 // @desc    Update an existing testimonial
 // @route   PUT /api/testimonials/:id
 // @access  Admin
-const updateTestimonial = async (req, res) => {
+const updateTestimonial = async (req, res, next) => {
     try {
-        const { clientName, company, review, rating, order } = req.body;
+        const { clientName, company, review, rating, order, clientImageUrl } = req.body;
         let testimonial = await Testimonial.findById(req.params.id);
 
         if (!testimonial) {
             return res.status(404).json({ success: false, message: 'Testimonial not found' });
         }
 
-        if (req.file && testimonial.clientImage) {
-            await deleteFile(testimonial.clientImage);
+        const newImageFile = req.file;
+        if (newImageFile) {
+            // If a new file is uploaded, delete the old one if it's a local file
+            if (testimonial.clientImage && !testimonial.clientImage.startsWith('http')) {
+                await deleteFile(testimonial.clientImage);
+            }
+            testimonial.clientImage = toPublicUploadPath(newImageFile);
+        } else if (clientImageUrl !== undefined) {
+            // If a URL is provided and it's different, delete the old local file
+            if (testimonial.clientImage && testimonial.clientImage !== clientImageUrl && !testimonial.clientImage.startsWith('http')) {
+                await deleteFile(testimonial.clientImage);
+            }
+            testimonial.clientImage = clientImageUrl;
         }
 
         testimonial.clientName = clientName ?? testimonial.clientName;
@@ -56,30 +80,29 @@ const updateTestimonial = async (req, res) => {
         testimonial.review = review ?? testimonial.review;
         testimonial.rating = rating ?? testimonial.rating;
         testimonial.order = order ?? testimonial.order;
-        testimonial.clientImage = req.file ? toPublicUploadPath(req.file) : testimonial.clientImage;
 
         const updatedTestimonial = await testimonial.save();
-        res.json({ success: true, message: 'Testimonial updated successfully', data: updatedTestimonial });
+        res.json({ success: true, message: 'Testimonial updated successfully', data: resolveTestimonialUrls(updatedTestimonial, req) });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        next(error);
     }
 };
 
 // @desc    Delete a testimonial
 // @route   DELETE /api/testimonials/:id
 // @access  Admin
-const deleteTestimonial = async (req, res) => {
+const deleteTestimonial = async (req, res, next) => {
     try {
         const testimonial = await Testimonial.findByIdAndDelete(req.params.id);
         if (!testimonial) {
             return res.status(404).json({ success: false, message: 'Testimonial not found' });
         }
-        if (testimonial.clientImage) {
+        if (testimonial.clientImage && !testimonial.clientImage.startsWith('http')) {
             await deleteFile(testimonial.clientImage);
         }
         res.json({ success: true, message: 'Testimonial deleted successfully' });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Server Error' });
+        next(error);
     }
 };
 

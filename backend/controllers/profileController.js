@@ -1,5 +1,19 @@
 const User = require('../models/User');
 
+const resolveUrl = (path, req) => {
+    if (!path || path.startsWith('http')) return path;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const normalizedPath = path.replace(/\\/g, '/');
+    return `${baseUrl}/${normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath}`;
+};
+
+const resolveProfileUrls = (doc, req) => {
+    const obj = doc.toObject ? doc.toObject() : { ...doc };
+    obj.avatarUrl = resolveUrl(obj.avatarUrl, req);
+    // We can resolve other URLs here in the future if needed
+    return obj;
+};
+
 // @desc    Get the main portfolio profile for public view
 // @route   GET /api/profile
 // @access  Public
@@ -16,7 +30,7 @@ const getPublicProfile = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Portfolio profile not found. Please set a user as the main portfolio profile in the admin panel.' });
         }
 
-        res.json({ success: true, data: profile });
+        res.json({ success: true, data: resolveProfileUrls(profile, req) });
     } catch (error) {
         console.error('Error fetching public profile:', error);
         res.status(500).json({ success: false, message: 'Server Error' });
@@ -69,7 +83,7 @@ const updateProfile = async (req, res) => {
         res.json({
             success: true,
             message: 'Profile updated successfully.',
-            data: responseData
+            data: resolveProfileUrls(responseData, req)
         });
 
     } catch (error) {

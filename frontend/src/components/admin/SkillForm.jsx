@@ -2,12 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { FiSave, FiLoader, FiLayers } from 'react-icons/fi';
 import { skillAPI } from '../../utils/api';
 
-// আসল প্রোজেক্টে এই mockApi এর পরিবর্তে utils/api.js থেকে আসল API কল করতে হবে।
-const mockApi = {
-    createSkill: async (data) => { console.log("Creating skill:", data); await new Promise(r => setTimeout(r, 1000)); return { success: true, message: "Skill created!" }; },
-    updateSkill: async (id, data) => { console.log(`Updating skill ${id}:`, data); await new Promise(r => setTimeout(r, 1000)); return { success: true, message: "Skill updated!" }; },
-};
-
 export default function SkillForm({ skill, onClose, showToast, onSaveSuccess }) {
     const [formData, setFormData] = useState({
         name: '',

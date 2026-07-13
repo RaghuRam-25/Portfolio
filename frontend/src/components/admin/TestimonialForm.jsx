@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiSave, FiLoader, FiStar, FiUser, FiMessageSquare, FiBriefcase } from 'react-icons/fi';
-import { testimonialAPI } from '../../utils/api';
-
-// আসল প্রোজেক্টে এই mockApi এর পরিবর্তে utils/api.js থেকে আসল API কল করতে হবে।
-const mockApi = {
-    create: async (formData) => { console.log("Creating testimonial:", formData); await new Promise(r => setTimeout(r, 1000)); return { success: true, message: "Testimonial created!" }; },
-    update: async (id, formData) => { console.log(`Updating testimonial ${id}:`, formData); await new Promise(r => setTimeout(r, 1000)); return { success: true, message: "Testimonial updated!" }; },
-};
+import { FiSave, FiLoader, FiStar, FiUser, FiMessageSquare, FiBriefcase, FiLink } from 'react-icons/fi';
+import { testimonialAPI, uploadAPI } from '../../utils/api';
 
 export default function TestimonialForm({ testimonial, onClose, showToast, onSaveSuccess }) {
     const [formData, setFormData] = useState({
@@ -15,9 +9,11 @@ export default function TestimonialForm({ testimonial, onClose, showToast, onSav
         review: '',
         rating: 5,
         order: 0,
+        clientImageUrl: '',
     });
     const [imageFile, setImageFile] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
 
     useEffect(() => {
         if (testimonial) {
@@ -27,6 +23,7 @@ export default function TestimonialForm({ testimonial, onClose, showToast, onSav
                 review: testimonial.review || '',
                 rating: testimonial.rating || 5,
                 order: testimonial.order || 0,
+                clientImageUrl: testimonial.clientImage || '',
             });
         }
     }, [testimonial]);
@@ -36,21 +33,41 @@ export default function TestimonialForm({ testimonial, onClose, showToast, onSav
         setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value, 10) : value }));
     };
 
-    const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            setImageFile(e.target.files[0]);
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImageFile(file); // Show local preview immediately
+        setIsUploading(true);
+        try {
+            const response = await uploadAPI.uploadFile(file);
+            if (response.success) {
+                setFormData(prev => ({ ...prev, clientImageUrl: response.data.url }));
+                showToast('Image uploaded successfully!', 'success');
+            } else {
+                throw new Error(response.message || 'Image upload failed.');
+            }
+        } catch (error) {
+            showToast(error.message, 'error');
+            e.target.value = null; // Clear file input on failure
+            setImageFile(null);
+        } finally {
+            setIsUploading(false);
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isUploading) {
+            showToast('Please wait for the image to finish uploading.', 'warning');
+            return;
+        }
         setIsLoading(true);
         try {
+            // testimonialAPI FormData প্রত্যাশা করে (body: formData)। plain object পাঠালে
+            // সেটা "[object Object]" হয়ে যেত এবং req.body খালি থাকত — তাই FormData বানানো হচ্ছে।
             const data = new FormData();
             Object.keys(formData).forEach(key => data.append(key, formData[key]));
-            if (imageFile) {
-                data.append('clientImage', imageFile);
-            }
 
             const response = testimonial?._id
                 ? await testimonialAPI.update(testimonial._id, data)
@@ -61,10 +78,11 @@ export default function TestimonialForm({ testimonial, onClose, showToast, onSav
                 onSaveSuccess();
                 onClose();
             } else {
-                throw new Error(response.message || 'Failed to save testimonial.');
+                const errorMessage = response.message || (response.errors ? response.errors.join(', ') : 'Failed to save testimonial.');
+                throw new Error(errorMessage);
             }
         } catch (error) {
-            showToast(error.message, 'error');
+            showToast(error.message || 'An unexpected error occurred.', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -85,18 +103,25 @@ export default function TestimonialForm({ testimonial, onClose, showToast, onSav
                     <InputField label="Display Order" name="order" type="number" value={formData.order} onChange={handleInputChange} />
                 </div>
 
-                <div>
-                    <label className="block text-xs font-bold text-neutral-500 mb-1.5">Client Image (Optional)</label>
-                    <input type="file" name="clientImage" onChange={handleFileChange} accept="image/*" className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30" />
-                    {(imageFile || (testimonial && testimonial.clientImage)) && (
-                        <div className="mt-3">
-                            <img src={imageFile ? URL.createObjectURL(imageFile) : testimonial.clientImage} alt="Preview" className="w-24 h-24 object-cover rounded-full border-2 border-neutral-700" />
+                <div className="p-4 border border-dashed border-neutral-700 rounded-lg">
+                    <InputField icon={<FiLink />} label="Client Image URL" name="clientImageUrl" value={formData.clientImageUrl} onChange={handleInputChange} placeholder="Paste direct image URL" />
+                    <div className="text-center my-2 text-xs text-neutral-500 font-bold">OR</div>
+                    <div className="flex items-center gap-4">
+                        <div className="flex-grow">
+                            <label className="block text-xs font-bold text-neutral-500 mb-1.5">Upload Client Image from Computer</label>
+                            <input type="file" name="clientImage" onChange={handleFileChange} accept="image/*" disabled={isUploading} className="w-full text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent-purple/20 file:text-accent-purple hover:file:bg-accent-purple/30 disabled:opacity-50" />
+                        </div>
+                        {isUploading && <FiLoader className="animate-spin text-accent-purple" />}
+                    </div>
+                    {(imageFile || formData.clientImageUrl) && (
+                        <div className="mt-4">
+                            <img src={imageFile ? URL.createObjectURL(imageFile) : formData.clientImageUrl} alt="Preview" className="w-24 h-24 object-cover rounded-full border-2 border-neutral-700" />
                         </div>
                     )}
                 </div>
 
                 <div className="pt-4 border-t border-neutral-800">
-                    <button type="submit" disabled={isLoading} className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm bg-accent-purple text-white hover:bg-accent-purple/90 transition-all disabled:bg-neutral-600">
+                    <button type="submit" disabled={isLoading || isUploading} className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm bg-accent-purple text-white hover:bg-accent-purple/90 transition-all disabled:bg-neutral-600">
                         {isLoading ? <><FiLoader className="animate-spin" /> Saving...</> : <><FiSave /> Save Testimonial</>}
                     </button>
                 </div>
